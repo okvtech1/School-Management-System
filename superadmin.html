@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Platform Dashboard — OKV Technology</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  html,body{height:100%;margin:0;}
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;overflow:hidden;}
+  .wrap{max-width:1100px;margin:0 auto;padding:1.25rem;}
+  h1{font-size:1.15rem;font-weight:700;color:#14213D;margin:0;}
+  /* ===== App shell: same left-sidebar tabs as the school dashboard ===== */
+  .app-shell{display:flex;height:100vh;overflow:hidden;}
+  .sidebar{width:236px;flex:none;background:#14213D;display:flex;flex-direction:column;transition:transform .25s ease;z-index:1600;}
+  .sidebar-brand{padding:1rem 1.1rem;color:#fff;font-weight:800;font-size:.92rem;border-bottom:1px solid rgba(255,255,255,.12);display:flex;align-items:center;gap:.55rem;flex:none;}
+  .sidebar-brand .seal{width:34px;height:30px;border-radius:15px;background:radial-gradient(circle at 35% 30%, #B8863B, #93672B);display:flex;align-items:center;justify-content:center;color:#14213D;font-weight:800;font-size:.62rem;letter-spacing:-.02em;flex:none;}
+  .tab-bar{flex:1;overflow-y:auto;padding:.7rem;display:flex;flex-direction:column;gap:.25rem;}
+  .tab-bar .tab-btn{width:100%;text-align:left;border:none;background:transparent;color:#cfd6e8;font-size:.84rem;font-weight:600;padding:.6em .8em;border-radius:10px;display:flex;align-items:center;gap:.6em;white-space:nowrap;}
+  .tab-bar .tab-btn.active{background:#B8863B;color:#14213D;}
+  .tab-bar .tab-btn:hover:not(.active){background:rgba(255,255,255,.1);}
+  .tab-bar .tab-btn .badge{margin-left:auto;}
+  .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(20,33,61,.45);z-index:1500;}
+  .sidebar-backdrop.show{display:block;}
+  .main-col{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh;}
+  .app-header{background:#fff;border-bottom:1px solid #DCD0B4;padding:.9rem 1.25rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;flex:none;}
+  .app-header .left-group{display:flex;align-items:center;gap:.7rem;}
+  .sidebar-toggle{display:none;background:none;border:1px solid #DCD0B4;border-radius:8px;width:38px;height:38px;align-items:center;justify-content:center;color:#14213D;font-size:1.1rem;flex:none;}
+  .content-area{flex:1;overflow:auto;min-height:0;}
+  @media (max-width: 900px){
+    .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);}
+    .sidebar.open{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.35);}
+    .sidebar-toggle{display:inline-flex;}
+  }
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;}
+  table{font-size:.82rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .status-pill{font-size:.68rem;font-weight:700;padding:.2em .55em;border-radius:6px;}
+  .status-trial{background:#FCF3DA;color:#8A6A12;}
+  .status-active{background:#DFF3E4;color:#1E6B3A;}
+  .status-other{background:#FBE4E4;color:#8B1E3F;}
+  .cap-healthy{background:#DFF3E4;color:#1E6B3A;}
+  .cap-monitor{background:#FCF3DA;color:#8A6A12;}
+  .cap-action{background:#FBE4E4;color:#8B1E3F;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.75rem;margin-bottom:1rem;}
+  .kpi-card{border-radius:14px;padding:1rem 1.1rem;background:#fff;border:1px solid #DCD0B4;box-shadow:0 4px 14px rgba(20,33,61,.06);display:flex;flex-direction:column;gap:.25rem;}
+  .kpi-card .kpi-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;margin-bottom:.2rem;}
+  .kpi-card .kpi-value{font-size:1.35rem;font-weight:800;color:#14213D;} .kpi-card .kpi-label{font-size:.7rem;color:#7a7259;text-transform:uppercase;letter-spacing:.04em;} .kpi-card .kpi-sub{font-size:.7rem;color:#9a9078;min-height:1em;}
+  .kpi-navy .kpi-icon{background:#E4F0FB;color:#1D5A9C;} .kpi-gold .kpi-icon{background:#FCF3DA;color:#8A6A12;} .kpi-green .kpi-icon{background:#DFF3E4;color:#1E6B3A;} .kpi-red .kpi-icon{background:#FBE4E4;color:#8B1E3F;}
+  .insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;margin-bottom:1rem;}
+  .insight-card{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1rem 1.1rem;box-shadow:0 4px 14px rgba(20,33,61,.06);min-width:0;}
+  .insight-card h3{font-size:.92rem;font-weight:800;color:#14213D;margin:0;} .insight-card .ic-sub{font-size:.72rem;color:#9a9078;margin:.1rem 0 .6rem;}
+  .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1rem;}
+  .summary-card{border-radius:12px;padding:.9rem 1rem;background:#F1E7D3;}
+  .summary-card .label{font-size:.7rem;text-transform:uppercase;color:#7a7259;}
+  .summary-card .value{font-size:1.3rem;font-weight:800;color:#14213D;}
+  .config-section{border:1px solid #DCD0B4;border-radius:10px;padding:1rem;margin-bottom:1rem;}
+  .config-section h3{font-size:.88rem;font-weight:700;color:#14213D;margin-bottom:.7rem;}
+  .form-switch-row{display:flex;align-items:center;justify-content:space-between;padding:.3rem 0;}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><span class="seal">OKV</span> Platform Dashboard</div>
+    <nav class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-tab="overview"><i class="bi bi-house-door"></i> Overview</button>
+      <button class="tab-btn" data-tab="orgs"><i class="bi bi-building"></i> Schools</button>
+      <button class="tab-btn" data-tab="approvals"><i class="bi bi-check2-circle"></i> Upgrade Approvals <span class="badge bg-danger" id="approvalsBadge" style="display:none;"></span></button>
+      <button class="tab-btn" data-tab="messaging"><i class="bi bi-megaphone"></i> Messaging</button>
+      <button class="tab-btn" data-tab="config"><i class="bi bi-sliders"></i> Platform Config</button>
+      <button class="tab-btn" data-tab="guide"><i class="bi bi-book"></i> Owner Guide</button>
+    </nav>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main-col">
+    <div class="app-header">
+      <div class="left-group">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu"><i class="bi bi-list"></i></button>
+        <div>
+          <h1>OKV Technology — Platform Dashboard</h1>
+          <div class="small text-muted" id="welcomeMsg"></div>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+    <div class="content-area">
+<div class="wrap">
+
+  <!-- OVERVIEW -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="kpi-grid" id="platKpis"></div>
+    <div class="insight-grid" id="platCharts"></div>
+    <div class="card-panel">
+      <h2><i class="bi bi-exclamation-triangle"></i> Schools Needing Attention</h2>
+      <div class="small text-muted mb-2">Trials ending within 3 days, renewals due within 7 days, and expired or cancelled accounts.</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>School</th><th>Admin</th><th>Status</th><th>Due</th><th></th></tr></thead>
+          <tbody id="attentionBody"><tr><td colspan="5" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-panel">
+      <h2><i class="bi bi-check2-circle"></i> Upgrade Requests</h2>
+      <div class="small" id="overviewApprovals">Loading…</div>
+    </div>
+  </div>
+
+  <!-- OWNER GUIDE -->
+  <div class="tab-panel" id="tab-guide">
+    <div class="card-panel">
+      <h2><i class="bi bi-rocket-takeoff"></i> Your daily routine</h2>
+      <ol class="small">
+        <li><b>Overview:</b> look at <i>Schools Needing Attention</i> (trials ending within 3 days, renewals due within 7 days, expired or cancelled accounts) and message those schools.</li>
+        <li><b>Upgrade Approvals:</b> open each request, check the payment screenshot against your bank, then <b>Approve</b> (the plan, start and due dates are set and the school is emailed) or <b>Reject</b> (the school is emailed to get in touch).</li>
+        <li><b>Schools:</b> search a school, edit its contact, plan, billing cycle, status or dates, and see its user count and capacity health.</li>
+        <li><b>Messaging:</b> email all schools or one school. SMS and WhatsApp send only once you connect a gateway.</li>
+      </ol>
+    </div>
+    <div class="card-panel">
+      <h2><i class="bi bi-sliders"></i> Platform Config</h2>
+      <p class="small">Set your platform name, colours and logo (they appear live on the sales pages), the bank details shown on the Upgrade page, and the keys for email, SMS and WhatsApp. Payment gateway keys can be stored, but online card checkout is not part of this release, so upgrades are confirmed from a bank transfer.</p>
+    </div>
+    <div class="card-panel">
+      <h2><i class="bi bi-hdd-stack"></i> Keeping the system healthy</h2>
+      <ul class="small">
+        <li>Run <code>setupCapacityMonitorTrigger</code>, <code>setupArchiveTrigger</code>, <code>setupWeeklyAttendanceEmailTrigger</code> and <code>setupTermSummaryEmailTrigger</code> once from the Apps Script editor.</li>
+        <li><code>runMaintenanceNow()</code> trims empty spreadsheet space, archives old records for every school and refreshes the capacity report. It is safe to run any time.</li>
+        <li><code>findDuplicateAdmissionNumbers()</code> lists any admission numbers shared by more than one student in schools that existed before the unique-number rule.</li>
+        <li>A school flagged <i>Monitor</i> or <i>Action Needed</i> in capacity should be archived (run maintenance) before anything else.</li>
+        <li>After editing <code>Code.gs</code> or <code>Tenancy.gs</code>, deploy a new version: Deploy, Manage deployments, Edit, New version.</li>
+      </ul>
+    </div>
+    <div class="card-panel">
+      <h2><i class="bi bi-question-circle"></i> Helping a school</h2>
+      <table class="table table-sm small mb-0">
+        <thead><tr><th>They say</th><th>Check</th></tr></thead>
+        <tbody>
+          <tr><td>Cannot log in</td><td>Plan dates and status in Schools; the user's Active flag; reset their password in Users and Roles.</td></tr>
+          <tr><td>A parent cannot open a result</td><td>The student must be cleared in Clearance; the passcode must belong to that session, term and class.</td></tr>
+          <tr><td>"Admission number already belongs to..."</td><td>Each number is unique for life. Give the new student a different number (Next free no. button).</td></tr>
+          <tr><td>Upload says too large</td><td>Use a simpler or smaller picture; the system shrinks pictures automatically but cannot fit very detailed ones.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SCHOOLS -->
+  <div class="tab-panel active" id="tab-orgs">
+    <div class="card-panel">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="mb-0"><i class="bi bi-building"></i> All Schools</h2>
+        <input type="text" class="form-control form-control-sm" id="orgSearch" placeholder="Search school/admin/email" style="max-width:260px;">
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>School</th><th>Admin</th><th>Contact</th><th>Plan</th><th>Status</th><th>Trial/Renewal Due</th><th>Users</th><th>Storage</th><th></th></tr></thead>
+          <tbody id="orgsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPGRADE APPROVALS -->
+  <div class="tab-panel" id="tab-approvals">
+    <div class="card-panel">
+      <h2><i class="bi bi-check2-circle"></i> Pending Upgrade Requests</h2>
+      <div class="small text-muted mb-2">Approve or reject a school's bank-transfer upgrade here — this replaces editing a cell in a shared sheet, since each school now keeps its own spreadsheet.</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>School</th><th>Contact</th><th>Requested Plan</th><th>Submitted</th><th>Screenshot</th><th class="text-end">Decision</th></tr></thead>
+          <tbody id="approvalsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MESSAGING -->
+  <div class="tab-panel" id="tab-messaging">
+    <div class="card-panel">
+      <h2><i class="bi bi-megaphone"></i> Send a Message to School Admin(s)</h2>
+      <div class="mb-2">
+        <label class="form-label small">Send To</label>
+        <select class="form-select form-select-sm" id="msg_target"><option value="ALL">All Schools (General Announcement)</option></select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small">Channels</label><br>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="msg_email" checked><label class="form-check-label small" for="msg_email">Email</label></div>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="msg_sms"><label class="form-check-label small" for="msg_sms">SMS</label></div>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="msg_whatsapp"><label class="form-check-label small" for="msg_whatsapp">WhatsApp</label></div>
+        <div class="form-text">SMS/WhatsApp only actually send once you've configured a gateway under Platform Config — otherwise you'll be told it wasn't sent, not left thinking it was.</div>
+      </div>
+      <div class="mb-2"><label class="form-label small">Subject</label><input class="form-control form-control-sm" id="msg_subject"></div>
+      <div class="mb-3"><label class="form-label small">Message</label><textarea class="form-control form-control-sm" id="msg_body" rows="4"></textarea></div>
+      <button class="btn btn-sm btn-forest" id="msg_sendBtn">Send</button>
+      <div id="msg_result" class="small mt-2"></div>
+    </div>
+  </div>
+
+  <!-- PLATFORM CONFIG -->
+  <div class="tab-panel" id="tab-config">
+    <div class="card-panel">
+      <h2><i class="bi bi-sliders"></i> Branding</h2>
+      <div class="config-section">
+        <div class="row g-2">
+          <div class="col-md-4"><label class="form-label small">Site Name</label><input class="form-control form-control-sm" id="cfg_siteName" placeholder="OKV School Management System"></div>
+          <div class="col-md-4"><label class="form-label small">Primary Color</label><input type="color" class="form-control form-control-sm form-control-color" id="cfg_primaryColor" value="#14213D"></div>
+          <div class="col-md-4"><label class="form-label small">Secondary/Accent Color</label><input type="color" class="form-control form-control-sm form-control-color" id="cfg_secondaryColor" value="#B8863B"></div>
+        </div>
+        <div class="mt-2">
+          <label class="form-label small">Logo</label>
+          <input type="file" accept="image/*" class="form-control form-control-sm" id="cfg_logoInput">
+          <img id="cfg_logoPreview" style="max-height:60px;margin-top:.5rem;display:none;">
+        </div>
+        <div class="small text-muted mt-2">Live — <code>index.html</code>, <code>pricing.html</code>, and <code>demo.html</code> all pull this on load and update their colors, logo, and site name automatically. Hover-state color variants are auto-derived from what you set here, so they won't be pixel-identical to hand-picked ones, but they'll match.</div>
+      </div>
+
+      <h2><i class="bi bi-envelope-gear"></i> Email / SMS / WhatsApp Configuration</h2>
+      <div class="config-section">
+        <h3>Email</h3>
+        <div class="small text-muted mb-2">The system already sends email via Google's MailApp (the Apps Script account's own Gmail) — no configuration needed for that to keep working. These fields are only for switching to a dedicated transactional email service later.</div>
+        <div class="row g-2">
+          <div class="col-md-6"><input class="form-control form-control-sm" id="cfg_emailProvider" placeholder="Provider name (optional, e.g. SendGrid)"></div>
+          <div class="col-md-6"><input class="form-control form-control-sm" id="cfg_emailApiKey" placeholder="API key (optional)"></div>
+        </div>
+      </div>
+      <div class="config-section">
+        <h3>SMS</h3>
+        <div class="form-switch-row"><span class="small">Enable SMS sending</span><input type="checkbox" class="form-check-input" id="cfg_smsEnabled"></div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-6"><input class="form-control form-control-sm" id="cfg_smsProvider" placeholder="Provider (e.g. Termii)"></div>
+          <div class="col-md-6"><input class="form-control form-control-sm" id="cfg_smsApiKey" placeholder="API key"></div>
+        </div>
+      </div>
+      <div class="config-section">
+        <h3>WhatsApp</h3>
+        <div class="form-switch-row"><span class="small">Enable WhatsApp sending</span><input type="checkbox" class="form-check-input" id="cfg_waEnabled"></div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-6"><input class="form-control form-control-sm" id="cfg_waProvider" placeholder="Provider (e.g. Twilio, Meta Cloud API)"></div>
+          <div class="col-md-6"><input class="form-control form-control-sm" id="cfg_waApiKey" placeholder="API key / token"></div>
+        </div>
+      </div>
+
+      <h2><i class="bi bi-credit-card-2-front"></i> Payment Methods</h2>
+      <div class="config-section">
+        <h3>Manual — Bank Transfer</h3>
+        <div class="row g-2">
+          <div class="col-md-4"><label class="form-label small">Account Number</label><input class="form-control form-control-sm" id="cfg_bankAccount" placeholder="8104141138"></div>
+          <div class="col-md-4"><label class="form-label small">Bank Name</label><input class="form-control form-control-sm" id="cfg_bankName" placeholder="OPay MFB"></div>
+          <div class="col-md-4"><label class="form-label small">Account Name</label><input class="form-control form-control-sm" id="cfg_bankAccountName" placeholder="Olasile Kehinde Victor"></div>
+        </div>
+        <div class="form-switch-row mt-1"><span class="small">Enable manual bank transfer</span><input type="checkbox" class="form-check-input" id="cfg_manualEnabled" checked></div>
+        <div class="small text-muted mt-1">This feeds <code>upgrade.html</code>'s pre-filled bank details — update it here instead of in code.</div>
+      </div>
+      <div class="config-section">
+        <h3>Paystack</h3>
+        <div class="form-switch-row"><span class="small">Enable Paystack</span><input type="checkbox" class="form-check-input" id="cfg_paystackEnabled"></div>
+        <input class="form-control form-control-sm mt-1" id="cfg_paystackKey" placeholder="Secret/Public key">
+      </div>
+      <div class="config-section">
+        <h3>Remita</h3>
+        <div class="form-switch-row"><span class="small">Enable Remita</span><input type="checkbox" class="form-check-input" id="cfg_remitaEnabled"></div>
+        <input class="form-control form-control-sm mt-1" id="cfg_remitaKey" placeholder="Merchant/API key">
+      </div>
+      <div class="config-section">
+        <h3>Flutterwave</h3>
+        <div class="form-switch-row"><span class="small">Enable Flutterwave</span><input type="checkbox" class="form-check-input" id="cfg_flutterwaveEnabled"></div>
+        <input class="form-control form-control-sm mt-1" id="cfg_flutterwaveKey" placeholder="Secret/Public key">
+      </div>
+      <div class="small text-muted mb-3">Gateway keys are stored here for when checkout integration is built — right now the system's only live payment flow is the manual bank-transfer + screenshot review on <code>upgrade.html</code>. Enabling a gateway toggle here doesn't yet activate real checkout.</div>
+
+      <button class="btn btn-forest" id="cfg_saveBtn">Save Platform Config</button>
+      <div id="cfg_result" class="small mt-2"></div>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit org modal -->
+<div class="modal fade" id="orgModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Edit School</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="om_orgId">
+        <div class="mb-2"><label class="form-label small">School Name</label><input class="form-control form-control-sm" id="om_orgName"></div>
+        <div class="mb-2"><label class="form-label small">Admin Full Name</label><input class="form-control form-control-sm" id="om_adminName"></div>
+        <div class="mb-2"><label class="form-label small">Email</label><input type="email" class="form-control form-control-sm" id="om_email"></div>
+        <div class="mb-2"><label class="form-label small">Phone</label><input class="form-control form-control-sm" id="om_phone"></div>
+        <hr>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label small">Plan</label>
+            <select class="form-select form-select-sm" id="om_plan"><option value="essentials">Essentials</option><option value="premium">Premium</option></select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Billing Cycle</label>
+            <select class="form-select form-select-sm" id="om_billingCycle"><option value="monthly">Monthly</option><option value="biannual">Bi-Annual</option><option value="yearly">Yearly</option></select>
+          </div>
+        </div>
+        <div class="mb-2 mt-2">
+          <label class="form-label small">Subscription Status</label>
+          <select class="form-select form-select-sm" id="om_status"><option value="trial">Trial</option><option value="active">Active</option><option value="expired">Expired</option><option value="cancelled">Cancelled</option></select>
+        </div>
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label small">Trial End Date</label><input type="date" class="form-control form-control-sm" id="om_trialEndDate"></div>
+          <div class="col-6"><label class="form-label small">Subscription Expiry</label><input type="date" class="form-control form-control-sm" id="om_subscriptionExpiry"></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-forest" id="om_saveBtn">Save Changes</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="charts-lib.js"></script>
+<script src="dashboard-metrics.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session || !session.isPlatformAdmin){ window.location.href = 'login.html'; }
+document.getElementById('welcomeMsg').textContent = `Signed in as ${session.fullName || session.username}`;
+
+const API_URL = window.SMS_CONFIG.apiUrl;
+async function apiCall(payload){
+  const res = await fetch(API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  const data = await res.json();
+  if (!data.ok && /session/i.test(data.error||'')){ localStorage.removeItem('sms_session'); window.location.href='login.html'; }
+  return data;
+}
+
+/* Tabs — left sidebar on desktop, off-canvas drawer on mobile (same behaviour as the school dashboard) */
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarBackdrop').classList.add('show'); }
+function closeSidebar(){ if (window.innerWidth > 900) return; document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarBackdrop').classList.remove('show'); }
+document.getElementById('sidebarToggle').addEventListener('click', () => document.getElementById('sidebar').classList.contains('open') ? closeSidebar() : openSidebar());
+document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebar);
+
+const TAB_KEYS = ['overview','orgs','approvals','messaging','config','guide'];
+function showTab(key){
+  if (!TAB_KEYS.includes(key)) key = 'overview';
+  document.querySelectorAll('#tabBar .tab-btn').forEach(x => x.classList.toggle('active', x.dataset.tab === key));
+  document.querySelectorAll('.tab-panel').forEach(x => x.classList.toggle('active', x.id === 'tab-' + key));
+  history.replaceState(null, '', key === 'overview' ? location.pathname : '#' + key);
+  document.querySelector('.content-area').scrollTop = 0;
+}
+document.getElementById('tabBar').addEventListener('click', (e) => {
+  const b = e.target.closest('.tab-btn'); if (!b) return;
+  showTab(b.dataset.tab); closeSidebar();
+});
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+if (location.hash) showTab(location.hash.slice(1));
+
+function escapeHtml(str){ return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function needsAttention(o){
+  if (o.subscriptionStatus === 'trial' && o.trialEndDate) return (new Date(o.trialEndDate) - Date.now()) < 3*24*60*60*1000;
+  if (o.subscriptionStatus === 'active' && o.subscriptionExpiry) return (new Date(o.subscriptionExpiry) - Date.now()) < 7*24*60*60*1000;
+  return o.subscriptionStatus !== 'trial' && o.subscriptionStatus !== 'active';
+}
+
+let orgs = [];
+let pendingList = [];
+
+/* Platform metrics + charts (same engine and chart library the school dashboards use). */
+function renderOverview(){
+  if (!window.smsMetrics || !window.smsCharts) return;
+  const out = smsMetrics.platform({ orgs, pending: pendingList, now: new Date() });
+  document.getElementById('platKpis').innerHTML = out.kpis.map(k => `<div class="kpi-card kpi-${k.tone}" id="kpi-${k.id}"><div class="kpi-icon"><i class="bi ${k.icon}"></i></div><div class="kpi-value" ${String(k.value).length > 10 ? 'style="font-size:1.05rem;"' : ''}>${escapeHtml(k.value)}</div><div class="kpi-label">${escapeHtml(k.label)}</div><div class="kpi-sub">${escapeHtml(k.sub)}</div></div>`).join('');
+  const grid = document.getElementById('platCharts');
+  grid.innerHTML = out.charts.map(c => `<div class="insight-card" id="chart-${c.id}"><h3>${c.title}</h3><div class="ic-sub">${c.subtitle}</div><div class="ic-body"></div></div>`).join('');
+  out.charts.forEach(c => {
+    const el = grid.querySelector(`#chart-${c.id} .ic-body`), sp = c.spec;
+    const f = sp.format === 'money' ? smsCharts.fmt.money : smsCharts.fmt.num;
+    const common = { format: f, emptyText: sp.emptyText, title: c.title };
+    if (c.type === 'bar') smsCharts.bar(el, { ...common, labels: sp.labels, series: sp.series });
+    else if (c.type === 'hbar') smsCharts.hbar(el, { ...common, labels: sp.labels, values: sp.values, color: sp.color });
+    else if (c.type === 'donut') smsCharts.donut(el, { ...common, labels: sp.labels, values: sp.values, colors: sp.colors, center: sp.center });
+  });
+}
+
+async function loadOrgs(){
+  const resp = await apiCall({ action:'platformListOrgs' });
+  if (!resp.ok){ alert(resp.error); return; }
+  orgs = resp.orgs;
+
+  const attention = orgs.filter(needsAttention);
+  renderOverview();
+  document.getElementById('attentionBody').innerHTML = attention.map(o => {
+    const due = o.subscriptionStatus === 'trial' ? o.trialEndDate : o.subscriptionExpiry;
+    return `<tr><td>${escapeHtml(o.orgName)}</td><td>${escapeHtml(o.adminName)}</td><td><span class="status-pill ${o.subscriptionStatus==='trial'?'status-trial':o.subscriptionStatus==='active'?'status-active':'status-other'}">${escapeHtml(o.subscriptionStatus)}</span></td><td class="small">${due ? new Date(due).toLocaleDateString() : '—'}</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary att-edit-btn" data-id="${escapeHtml(o.orgId)}">Edit</button></td></tr>`;
+  }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">Everything looks healthy.</td></tr>';
+  document.querySelectorAll('.att-edit-btn').forEach(b => b.addEventListener('click', () => openOrgEdit(b.dataset.id)));
+
+  document.getElementById('msg_target').innerHTML = '<option value="ALL">All Schools (General Announcement)</option>' +
+    orgs.map(o => `<option value="${o.orgId}">${o.orgName} (${o.adminName})</option>`).join('');
+
+  renderOrgsTable();
+}
+function renderOrgsTable(){
+  const q = document.getElementById('orgSearch').value.trim().toLowerCase();
+  const rows = orgs.filter(o => !q || `${o.orgName} ${o.adminName} ${o.email}`.toLowerCase().includes(q));
+  document.getElementById('orgsTableBody').innerHTML = rows.map(o => {
+    const statusClass = o.subscriptionStatus === 'trial' ? 'status-trial' : o.subscriptionStatus === 'active' ? 'status-active' : 'status-other';
+    const dueDate = o.subscriptionStatus === 'trial' ? o.trialEndDate : o.subscriptionExpiry;
+    return `<tr>
+      <td>${escapeHtml(o.orgName)}</td><td>${escapeHtml(o.adminName)}</td>
+      <td class="small">${escapeHtml(o.email)}<br>${escapeHtml(o.phone||'—')}</td>
+      <td class="small">${o.plan||'—'} (${o.billingCycle||'—'})</td>
+      <td><span class="status-pill ${statusClass}">${o.subscriptionStatus}</span></td>
+      <td class="small">${dueDate ? new Date(dueDate).toLocaleDateString() : '—'}</td>
+      <td>${o.userCount}</td>
+      <td class="small">${renderCapacityCell(o.capacity)}</td>
+      <td class="text-end"><button class="btn btn-sm btn-outline-secondary edit-org-btn" data-id="${o.orgId}">Edit</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9" class="text-center text-muted py-3">No schools yet.</td></tr>';
+  document.querySelectorAll('.edit-org-btn').forEach(b => b.addEventListener('click', () => openOrgEdit(b.dataset.id)));
+}
+document.getElementById('orgSearch').addEventListener('input', renderOrgsTable);
+
+// Cell-capacity monitoring display — Super Admin oversight only (checkAllTenantCapacity
+// in Tenancy.gs runs daily and writes these fields; org Admins/Users never see this tab).
+function renderCapacityCell(cap){
+  if (!cap || cap.cellsUsed === undefined) return '—';
+  const cls = cap.status === 'Action Needed' ? 'cap-action' : cap.status === 'Monitor' ? 'cap-monitor' : 'cap-healthy';
+  const eta = (cap.estMonthsTo90 !== null && cap.estMonthsTo90 !== undefined && cap.estMonthsTo90 !== '')
+    ? `~${cap.estMonthsTo90}mo to 90%` : 'growth unknown';
+  const title = cap.recommendation ? ` title="${cap.recommendation.replace(/"/g,'&quot;')}"` : '';
+  const archiveLine = cap.lastArchiveRunAt
+    ? `Archived ${cap.lastArchiveRowsMoved} row(s), ~${cap.lastArchiveCellsReclaimed} cells · ${new Date(cap.lastArchiveRunAt).toLocaleDateString()}`
+    : 'No archive run yet';
+  return `<span class="status-pill ${cls}"${title}>${cap.cellsPct}% · ${cap.status}</span><br>` +
+    `<span class="text-muted" style="font-size:.68rem;">${eta}</span><br>` +
+    `<span class="text-muted" style="font-size:.68rem;">Archiving: <b>${cap.archivingOn ? 'On' : 'Off'}</b> · Attendance: <b>${cap.attendanceMode}</b></span><br>` +
+    `<span class="text-muted" style="font-size:.65rem;">${archiveLine}</span>`;
+}
+
+// ============================== UPGRADE APPROVALS ==============================
+async function loadApprovals(){
+  const resp = await apiCall({ action:'platformListPendingUpgrades' });
+  if (!resp.ok){ return; }
+  const pending = resp.pending;
+  pendingList = pending; renderOverview();
+  document.getElementById('overviewApprovals').innerHTML = pending.length
+    ? `${pending.length} request${pending.length===1?'':'s'} waiting — <a href="#approvals">review now →</a>`
+    : 'No pending upgrade requests.';
+  const badge = document.getElementById('approvalsBadge');
+  if (pending.length){ badge.style.display = 'inline-block'; badge.textContent = pending.length; }
+  else { badge.style.display = 'none'; }
+
+  document.getElementById('approvalsTableBody').innerHTML = pending.map(p => `
+    <tr>
+      <td>${p.orgName}</td>
+      <td class="small">${p.fullName}<br>${p.email}<br>${p.phone||''}</td>
+      <td class="small">${p.requestedLabel || p.requestedPlan}</td>
+      <td class="small">${p.submittedAt ? new Date(p.submittedAt).toLocaleString() : '—'}</td>
+      <td class="small">${p.hasScreenshot ? 'Attached (emailed to you)' : 'None'}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-forest approve-btn" data-org="${p.orgId}" data-rec="${p.recordId}">Approve</button>
+        <button class="btn btn-sm btn-outline-danger reject-btn" data-org="${p.orgId}" data-rec="${p.recordId}">Reject</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">No pending requests.</td></tr>';
+
+  document.querySelectorAll('.approve-btn').forEach(b => b.addEventListener('click', () => reviewUpgrade(b.dataset.org, b.dataset.rec, 'confirmed')));
+  document.querySelectorAll('.reject-btn').forEach(b => b.addEventListener('click', () => reviewUpgrade(b.dataset.org, b.dataset.rec, 'rejected')));
+}
+async function reviewUpgrade(orgId, recordId, decision){
+  if (decision === 'rejected' && !confirm('Reject this upgrade request?')) return;
+  const resp = await apiCall({ action:'platformReviewUpgrade', orgId, recordId, decision });
+  if (!resp.ok){ alert(resp.error); return; }
+  loadApprovals();
+  loadOrgs();
+}
+
+function openOrgEdit(orgId){
+  const o = orgs.find(x => x.orgId === orgId);
+  document.getElementById('om_orgId').value = o.orgId;
+  document.getElementById('om_orgName').value = o.orgName;
+  document.getElementById('om_adminName').value = o.adminName;
+  document.getElementById('om_email').value = o.email;
+  document.getElementById('om_phone').value = o.phone;
+  document.getElementById('om_plan').value = o.plan || 'essentials';
+  document.getElementById('om_billingCycle').value = o.billingCycle || 'monthly';
+  document.getElementById('om_status').value = o.subscriptionStatus;
+  document.getElementById('om_trialEndDate').value = o.trialEndDate ? o.trialEndDate.slice(0,10) : '';
+  document.getElementById('om_subscriptionExpiry').value = o.subscriptionExpiry ? o.subscriptionExpiry.slice(0,10) : '';
+  new bootstrap.Modal(document.getElementById('orgModal')).show();
+}
+document.getElementById('om_saveBtn').addEventListener('click', async () => {
+  const orgId = document.getElementById('om_orgId').value;
+  const contactResp = await apiCall({
+    action:'platformUpdateOrgContact', orgId,
+    orgName: document.getElementById('om_orgName').value.trim(),
+    adminName: document.getElementById('om_adminName').value.trim(),
+    email: document.getElementById('om_email').value.trim(),
+    phone: document.getElementById('om_phone').value.trim()
+  });
+  if (!contactResp.ok){ alert(contactResp.error); return; }
+
+  const planResp = await apiCall({
+    action:'platformUpdateOrgPlan', orgId,
+    plan: document.getElementById('om_plan').value,
+    billingCycle: document.getElementById('om_billingCycle').value,
+    subscriptionStatus: document.getElementById('om_status').value,
+    trialEndDate: document.getElementById('om_trialEndDate').value ? new Date(document.getElementById('om_trialEndDate').value).toISOString() : '',
+    subscriptionExpiry: document.getElementById('om_subscriptionExpiry').value ? new Date(document.getElementById('om_subscriptionExpiry').value).toISOString() : ''
+  });
+  if (!planResp.ok){ alert(planResp.error); return; }
+
+  bootstrap.Modal.getInstance(document.getElementById('orgModal')).hide();
+  loadOrgs();
+});
+
+document.getElementById('msg_sendBtn').addEventListener('click', async () => {
+  const targetOrgId = document.getElementById('msg_target').value;
+  const subject = document.getElementById('msg_subject').value.trim();
+  const message = document.getElementById('msg_body').value.trim();
+  const channels = [];
+  if (document.getElementById('msg_email').checked) channels.push('email');
+  if (document.getElementById('msg_sms').checked) channels.push('sms');
+  if (document.getElementById('msg_whatsapp').checked) channels.push('whatsapp');
+  const resultBox = document.getElementById('msg_result');
+  if (!subject || !message){ alert('Subject and message are required.'); return; }
+
+  document.getElementById('msg_sendBtn').disabled = true;
+  resultBox.textContent = 'Sending…'; resultBox.className = 'small mt-2 text-muted';
+  const resp = await apiCall({ action:'platformSendMessage', targetOrgId, subject, message, channels });
+  document.getElementById('msg_sendBtn').disabled = false;
+
+  if (!resp.ok){ resultBox.textContent = resp.error; resultBox.className = 'small mt-2 text-danger'; return; }
+  resultBox.className = 'small mt-2 text-success';
+  let txt = `Emailed ${resp.emailSent} of ${resp.totalTargets} school admin(s).`;
+  if (resp.smsNote) txt += ` ${resp.smsNote}`;
+  if (resp.whatsappNote) txt += ` ${resp.whatsappNote}`;
+  resultBox.textContent = txt;
+});
+
+let cfgLogoDataUrl = '';
+document.getElementById('cfg_logoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  cfgLogoDataUrl = await resizeImageToDataUrl(file, 300, 100);
+  const preview = document.getElementById('cfg_logoPreview');
+  preview.src = cfgLogoDataUrl; preview.style.display = 'block';
+});
+
+async function loadConfig(){
+  const resp = await apiCall({ action:'platformGetConfig' });
+  if (!resp.ok) return;
+  const c = resp.config || {};
+  const b = c.branding || {}, e = c.email || {}, s = c.sms || {}, w = c.whatsapp || {}, p = c.payment || {};
+
+  document.getElementById('cfg_siteName').value = b.siteName || '';
+  document.getElementById('cfg_primaryColor').value = b.primaryColor || '#14213D';
+  document.getElementById('cfg_secondaryColor').value = b.secondaryColor || '#B8863B';
+  if (b.logoUrl){ cfgLogoDataUrl = b.logoUrl; document.getElementById('cfg_logoPreview').src = b.logoUrl; document.getElementById('cfg_logoPreview').style.display = 'block'; }
+
+  document.getElementById('cfg_emailProvider').value = e.provider || '';
+  document.getElementById('cfg_emailApiKey').value = e.apiKey || '';
+  document.getElementById('cfg_smsEnabled').checked = !!s.enabled;
+  document.getElementById('cfg_smsProvider').value = s.provider || '';
+  document.getElementById('cfg_smsApiKey').value = s.apiKey || '';
+  document.getElementById('cfg_waEnabled').checked = !!w.enabled;
+  document.getElementById('cfg_waProvider').value = w.provider || '';
+  document.getElementById('cfg_waApiKey').value = w.apiKey || '';
+
+  const manual = p.manual || {};
+  document.getElementById('cfg_bankAccount').value = manual.accountNumber || '8104141138';
+  document.getElementById('cfg_bankName').value = manual.bankName || 'OPay MFB';
+  document.getElementById('cfg_bankAccountName').value = manual.accountName || 'Olasile Kehinde Victor';
+  document.getElementById('cfg_manualEnabled').checked = manual.enabled !== false;
+
+  const paystack = p.paystack || {}, remita = p.remita || {}, flutterwave = p.flutterwave || {};
+  document.getElementById('cfg_paystackEnabled').checked = !!paystack.enabled;
+  document.getElementById('cfg_paystackKey').value = paystack.apiKey || '';
+  document.getElementById('cfg_remitaEnabled').checked = !!remita.enabled;
+  document.getElementById('cfg_remitaKey').value = remita.apiKey || '';
+  document.getElementById('cfg_flutterwaveEnabled').checked = !!flutterwave.enabled;
+  document.getElementById('cfg_flutterwaveKey').value = flutterwave.apiKey || '';
+}
+
+document.getElementById('cfg_saveBtn').addEventListener('click', async () => {
+  const config = {
+    branding: {
+      siteName: document.getElementById('cfg_siteName').value.trim(),
+      primaryColor: document.getElementById('cfg_primaryColor').value,
+      secondaryColor: document.getElementById('cfg_secondaryColor').value,
+      logoUrl: cfgLogoDataUrl
+    },
+    email: { provider: document.getElementById('cfg_emailProvider').value.trim(), apiKey: document.getElementById('cfg_emailApiKey').value.trim() },
+    sms: { enabled: document.getElementById('cfg_smsEnabled').checked, provider: document.getElementById('cfg_smsProvider').value.trim(), apiKey: document.getElementById('cfg_smsApiKey').value.trim() },
+    whatsapp: { enabled: document.getElementById('cfg_waEnabled').checked, provider: document.getElementById('cfg_waProvider').value.trim(), apiKey: document.getElementById('cfg_waApiKey').value.trim() },
+    payment: {
+      manual: {
+        enabled: document.getElementById('cfg_manualEnabled').checked,
+        accountNumber: document.getElementById('cfg_bankAccount').value.trim(),
+        bankName: document.getElementById('cfg_bankName').value.trim(),
+        accountName: document.getElementById('cfg_bankAccountName').value.trim()
+      },
+      paystack: { enabled: document.getElementById('cfg_paystackEnabled').checked, apiKey: document.getElementById('cfg_paystackKey').value.trim() },
+      remita: { enabled: document.getElementById('cfg_remitaEnabled').checked, apiKey: document.getElementById('cfg_remitaKey').value.trim() },
+      flutterwave: { enabled: document.getElementById('cfg_flutterwaveEnabled').checked, apiKey: document.getElementById('cfg_flutterwaveKey').value.trim() }
+    }
+  };
+  const resultBox = document.getElementById('cfg_result');
+  resultBox.textContent = 'Saving…'; resultBox.className = 'small mt-2 text-muted';
+  const resp = await apiCall({ action:'platformSaveConfig', config });
+  if (!resp.ok){ resultBox.textContent = resp.error; resultBox.className = 'small mt-2 text-danger'; return; }
+  resultBox.textContent = 'Saved.'; resultBox.className = 'small mt-2 text-success';
+});
+
+loadOrgs();
+loadApprovals();
+loadConfig();
+</script>
+<script src="logout-lib.js"></script>
+<script src="img-lib.js"></script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Reports</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;}
+  table{font-size:.82rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .period-btn{border:1px solid #DCD0B4;background:#fff;color:#5b5442;font-size:.78rem;font-weight:600;padding:.35em .9em;border-radius:20px;}
+  .period-btn.active{background:#14213D;border-color:#14213D;color:#fff;}
+  .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem;}
+  .summary-card{border-radius:12px;padding:.9rem 1rem;background:#F1E7D3;color:#14213D;}
+  .summary-card .label{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;opacity:.85;}
+  .summary-card .value{font-size:1.3rem;font-weight:800;}
+  .print-title{display:none;}
+  @media print{
+    .topline a, .topline button, #reportControls, #offlineBanner{display:none !important;}
+    body{background:#fff;padding:0;}
+    .card-panel{box-shadow:none;border:none;}
+    #reportControls, #reportNote{display:none !important;}
+    .print-title{display:none !important;}
+    @page{size:A4 portrait;margin:10mm;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — changes are saved locally and will sync once you're back online.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <h1>Reports</h1>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+  </div>
+
+  <div class="print-title" id="printTitle">
+    <div class="pt-school" id="pt_school"></div>
+    <div id="pt_reportName"></div>
+    <div class="pt-range" id="pt_range"></div>
+  </div>
+
+  <div class="card-panel" id="reportControls">
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-md-5">
+        <label class="form-label small">Report</label>
+        <select class="form-select form-select-sm" id="reportType"></select>
+      </div>
+      <div class="col-md-7">
+        <label class="form-label small d-block">Period</label>
+        <button class="period-btn" data-range="today">Daily</button>
+        <button class="period-btn" data-range="week">Weekly</button>
+        <button class="period-btn" data-range="quarter">Quarterly</button>
+        <button class="period-btn active" data-range="year">Yearly</button>
+        <button class="period-btn" data-range="all">All Time</button>
+      </div>
+    </div>
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3"><label class="form-label small">From</label><input type="date" class="form-control form-control-sm" id="rp_from"></div>
+      <div class="col-md-3"><label class="form-label small">To</label><input type="date" class="form-control form-control-sm" id="rp_to"></div>
+      <div class="col-md-6 text-md-end">
+        <button class="btn btn-sm btn-outline-secondary" id="printBtn"><i class="bi bi-printer"></i> Print</button>
+        <button class="btn btn-sm btn-outline-secondary" id="csvBtn"><i class="bi bi-filetype-csv"></i> Download CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <h2 id="reportHeading">Report</h2>
+    <div class="summary-cards" id="summaryCards"></div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead id="reportTableHead"></thead>
+        <tbody id="reportTableBody"></tbody>
+      </table>
+    </div>
+    <div class="small text-muted mt-2" id="reportNote" data-noprint="1"></div>
+  </div>
+</div>
+
+<script src="csv-lib.js"></script>
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="print-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const roles = (session && session.roles) || [];
+if (!session){ window.top.location.href = 'dashboard.html'; }
+
+const FEE_REPORT_ROLES = ['Super Administrator','School Administrator','Bursar / Accountant','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const ENROLLMENT_REPORT_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Bursar / Accountant'];
+const ACADEMIC_REPORT_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'];
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+/* ============================== REPORT TYPE OPTIONS (role-aware) ============================== */
+const REPORT_DEFS = [
+  { value: 'myActivity', label: 'My Activity Summary', roles: null }, // null = everyone
+  { value: 'feeCollection', label: 'Fee Collection Report', roles: FEE_REPORT_ROLES },
+  { value: 'enrollment', label: 'Enrollment Report', roles: ENROLLMENT_REPORT_ROLES },
+  { value: 'academicActivity', label: 'Academic Activity Report', roles: ACADEMIC_REPORT_ROLES }
+];
+const availableReports = REPORT_DEFS.filter(r => !r.roles || roles.some(x => r.roles.includes(x)));
+document.getElementById('reportType').innerHTML = availableReports.map(r => `<option value="${r.value}">${r.label}</option>`).join('');
+// Default to the most specific report this role has, not always "My Activity" — more useful on open.
+document.getElementById('reportType').value = availableReports[availableReports.length - 1].value;
+
+/* ============================== PERIOD ============================== */
+function pad(n){ return String(n).padStart(2,'0'); }
+function toDateStr(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function applyPreset(range){
+  const now = new Date();
+  let from = '', to = toDateStr(now);
+  if (range === 'today') from = to;
+  else if (range === 'week'){
+    const day = now.getDay(); // 0=Sun
+    const monday = new Date(now); monday.setDate(now.getDate() - ((day + 6) % 7));
+    from = toDateStr(monday);
+  } else if (range === 'quarter'){
+    const qStartMonth = Math.floor(now.getMonth()/3)*3;
+    from = toDateStr(new Date(now.getFullYear(), qStartMonth, 1));
+  } else if (range === 'year'){
+    from = `${now.getFullYear()}-01-01`;
+  } else { from = ''; to = ''; }
+  document.getElementById('rp_from').value = from;
+  document.getElementById('rp_to').value = to;
+}
+document.querySelectorAll('.period-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.period-btn').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  applyPreset(b.dataset.range);
+  renderReport();
+}));
+document.getElementById('rp_from').addEventListener('change', () => { clearActivePreset(); renderReport(); });
+document.getElementById('rp_to').addEventListener('change', () => { clearActivePreset(); renderReport(); });
+document.getElementById('reportType').addEventListener('change', renderReport);
+function clearActivePreset(){ document.querySelectorAll('.period-btn').forEach(x => x.classList.remove('active')); }
+function inRange(dateStr, from, to){
+  if (!dateStr) return false;
+  const d = dateStr.slice(0,10);
+  if (from && d < from) return false;
+  if (to && d > to) return false;
+  return true;
+}
+
+/* ============================== DATA ============================== */
+let cache = {};
+async function loadAll(){
+  const types = ['feePayment','student','staff','cbtTest','cbtSubmission','assignment','assignmentSubmission'];
+  const results = await Promise.all(types.map(t => window.smsSync.getRecords(t)));
+  types.forEach((t,i) => cache[t] = results[i]);
+  renderReport();
+}
+
+/* ============================== RENDER ============================== */
+let lastCsvRows = { cols: [], rows: [] };
+function setSummary(cards){
+  document.getElementById('summaryCards').innerHTML = cards.map(c => `
+    <div class="summary-card"><div class="label">${c.label}</div><div class="value">${c.value}</div></div>`).join('');
+}
+function setTable(headCols, bodyRows){
+  document.getElementById('reportTableHead').innerHTML = '<tr>' + headCols.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+  document.getElementById('reportTableBody').innerHTML = bodyRows.length
+    ? bodyRows.map(r => '<tr>' + r.map(c=>`<td>${c}</td>`).join('') + '</tr>').join('')
+    : `<tr><td colspan="${headCols.length}" class="text-center text-muted py-3">No records in this period.</td></tr>`;
+}
+
+function renderReport(){
+  const type = document.getElementById('reportType').value;
+  const from = document.getElementById('rp_from').value;
+  const to = document.getElementById('rp_to').value;
+  const def = REPORT_DEFS.find(r => r.value === type);
+  document.getElementById('reportHeading').textContent = def.label;
+  document.getElementById('pt_school').textContent = session.orgName || '';
+  document.getElementById('pt_reportName').textContent = def.label;
+  document.getElementById('pt_range').textContent = `${from || 'Beginning'} to ${to || 'Now'}`;
+  document.getElementById('reportNote').textContent = 'Computed live from records synced to this device — tap Sync Now on the Dashboard first if you just made changes elsewhere.';
+
+  if (type === 'feeCollection') return renderFeeCollection(from, to);
+  if (type === 'enrollment') return renderEnrollment(from, to);
+  if (type === 'academicActivity') return renderAcademicActivity(from, to);
+  return renderMyActivity(from, to);
+}
+
+function renderFeeCollection(from, to){
+  const paid = (cache.feePayment||[]).filter(p => {
+    const st = p.payload.status;
+    return (st === 'confirmed-full' || st === 'confirmed-partial') && inRange(p.payload.confirmedAt, from, to);
+  });
+  const total = paid.reduce((s,p)=>s+Number(p.payload.confirmedAmount||0),0);
+  const byFeeType = {};
+  paid.forEach(p => { const k = p.payload.feeTypeName || 'Other'; byFeeType[k] = (byFeeType[k]||0) + Number(p.payload.confirmedAmount||0); });
+  setSummary([
+    { label: 'Total Collected', value: '₦' + total.toLocaleString() },
+    { label: 'Payments Confirmed', value: paid.length },
+    { label: 'Fee Types', value: Object.keys(byFeeType).length }
+  ]);
+  const rows = paid.sort((a,b)=>(b.payload.confirmedAt||'').localeCompare(a.payload.confirmedAt||''))
+    .map(p => [ (p.payload.confirmedAt||'').slice(0,10), p.payload.fullName||'', p.payload.class||'', p.payload.feeTypeName||'', '₦'+Number(p.payload.confirmedAmount||0).toLocaleString() ]);
+  setTable(['Date','Student','Class','Fee Type','Amount'], rows);
+  lastCsvRows = { cols:['Date','Student','Class','Fee Type','Amount'], rows: rows.map(r => r.map(c=>String(c).replace('₦',''))) };
+}
+
+function renderEnrollment(from, to){
+  const newStudents = (cache.student||[]).filter(s => inRange(s.createdAt, from, to));
+  const newStaff = (cache.staff||[]).filter(s => inRange(s.createdAt, from, to));
+  setSummary([
+    { label: 'New Students', value: newStudents.length },
+    { label: 'New Staff', value: newStaff.length },
+    { label: 'Total Students on Roll', value: (cache.student||[]).length }
+  ]);
+  const rows = [
+    ...newStudents.map(s => [(s.createdAt||'').slice(0,10), 'Student', s.payload.fullName||'', s.payload.class||'']),
+    ...newStaff.map(s => [(s.createdAt||'').slice(0,10), 'Staff', s.payload.fullName||'', s.payload.role||''])
+  ].sort((a,b)=>b[0].localeCompare(a[0]));
+  setTable(['Date Added','Type','Name','Class/Role'], rows);
+  lastCsvRows = { cols:['Date Added','Type','Name','Class/Role'], rows };
+}
+
+function renderAcademicActivity(from, to){
+  const testTitleById = {}; (cache.cbtTest||[]).forEach(t => testTitleById[t.recordId] = t.payload.title || 'Untitled Test');
+  const studentNameById = {}; (cache.student||[]).forEach(s => studentNameById[s.recordId] = s.payload.fullName || '');
+  const asgTitleById = {}; (cache.assignment||[]).forEach(a => asgTitleById[a.recordId] = a.payload.title || 'Untitled Assignment');
+
+  const cbtSubs = (cache.cbtSubmission||[]).filter(r => r.payload.status === 'submitted' && inRange(r.updatedAt, from, to));
+  const asgSubs = (cache.assignmentSubmission||[]).filter(r => inRange(r.createdAt, from, to));
+
+  const avgScore = cbtSubs.length ? Math.round(cbtSubs.reduce((s,r)=>s+Number(r.payload.score||0),0) / cbtSubs.length) : 0;
+  setSummary([
+    { label: 'CBT Tests Submitted', value: cbtSubs.length },
+    { label: 'Average CBT Score', value: cbtSubs.length ? avgScore + '%' : '—' },
+    { label: 'Assignments Submitted', value: asgSubs.length }
+  ]);
+  const rows = [
+    ...cbtSubs.map(r => [(r.updatedAt||'').slice(0,10), 'CBT Test', testTitleById[r.payload.testId]||'', studentNameById[r.payload.studentId]||'', (r.payload.score!=null?r.payload.score+'%':'—')]),
+    ...asgSubs.map(r => [(r.createdAt||'').slice(0,10), 'Assignment', asgTitleById[r.payload.assignmentId]||'', r.payload.studentName||'', '—'])
+  ].sort((a,b)=>b[0].localeCompare(a[0]));
+  setTable(['Date','Type','Title','Student','Score'], rows);
+  lastCsvRows = { cols:['Date','Type','Title','Student','Score'], rows };
+}
+
+function renderMyActivity(from, to){
+  // Whatever this user personally submitted/owns, across the record types they can see —
+  // the one report every role gets, regardless of admin/teacher/bursar permissions.
+  const mine = [];
+  Object.keys(cache).forEach(type => {
+    (cache[type]||[]).forEach(r => {
+      if (r.ownerUserId === session.userId && inRange(r.createdAt, from, to)) mine.push({ type, r });
+    });
+  });
+  setSummary([
+    { label: 'Records You Added', value: mine.length },
+    { label: 'Record Types', value: new Set(mine.map(m=>m.type)).size }
+  ]);
+  const rows = mine.sort((a,b)=>(b.r.createdAt||'').localeCompare(a.r.createdAt||''))
+    .map(({type,r}) => [(r.createdAt||'').slice(0,10), type, (r.payload.fullName || r.payload.title || r.payload.name || r.recordId)]);
+  setTable(['Date','Type','Record'], rows);
+  lastCsvRows = { cols:['Date','Type','Record'], rows };
+  if (!mine.length) document.getElementById('reportNote').textContent += ' Many record types (e.g. fee payments, CBT submissions) are logged without a per-user owner and won\'t appear here — pick one of the other reports for those.';
+}
+
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+// Branded A4 letterhead + title + period on the printout (also applies when printing with Ctrl+P).
+window.smsPrint.attachPage(() => ({
+  title: document.getElementById('pt_reportName').textContent || 'Report',
+  meta: [['Period', document.getElementById('pt_range').textContent], ['Prepared by', (session && session.fullName) || '']]
+}));
+document.getElementById('csvBtn').addEventListener('click', () => {
+  const type = document.getElementById('reportType').value;
+  const from = document.getElementById('rp_from').value, to = document.getElementById('rp_to').value;
+  const lines = [lastCsvRows.cols.join(',')].concat(lastCsvRows.rows.map(r => r.map(csvEscape).join(',')));
+  downloadCsv(lines.join('\n'), `${type}-report_${from||'start'}_to_${to||'now'}.csv`);
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+applyPreset('year');
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+<script src="pw-toggle.js"></script>
+</body>
+</html>

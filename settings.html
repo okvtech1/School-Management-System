@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Settings</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:800px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;display:flex;align-items:center;gap:.4rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .class-row{display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.6rem;flex-wrap:wrap;}
+  .class-row input.cls-name{max-width:140px;}
+  .class-row select.cls-section{max-width:130px;}
+  .class-row input.cls-arms{flex:1;min-width:160px;}
+  .chip-list{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem;}
+  .tabbar{display:flex;gap:.4rem;flex-wrap:wrap;}
+  .tabbar button{border:1px solid #DCD0B4;background:#fff;color:#5b5442;font-size:.78rem;font-weight:600;padding:.35em 1em;border-radius:20px;}
+  .tabbar button.active{background:#14213D;border-color:#14213D;color:#fff;}
+  .chip{background:#F1E7D3;color:#93672B;font-size:.8rem;font-weight:600;padding:.3em .55em;border-radius:6px;display:flex;align-items:center;gap:.35rem;}
+  .chip button{background:none;border:none;color:#93672B;font-weight:700;line-height:1;padding:0;}
+  .ca-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;}
+  .ca-row label{width:110px;font-size:.86rem;font-weight:600;color:#3d3826;}
+  .sig-preview{max-width:260px;max-height:100px;border:1px dashed #DCD0B4;border-radius:8px;padding:.4rem;margin-bottom:.6rem;display:none;background:#fff;}
+  .sig-preview img{max-width:100%;max-height:90px;display:block;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — settings changes will be saved locally and synced once you're back online.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>School Settings</h1>
+      <div class="sync-status" id="syncStatusText"><span class="dot offline"></span>Checking…</div>
+    </div>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Back to Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <button class="btn btn-sm btn-forest" id="saveAllBtn"><i class="bi bi-check2"></i> Save Settings</button>
+    </div>
+  </div>
+
+  <!-- School Info -->
+  <div class="card-panel">
+    <h2><i class="bi bi-building"></i> School Info &amp; Current Term</h2>
+    <div class="row g-2">
+      <div class="col-md-6">
+        <label class="form-label small">School Name</label>
+        <input type="text" class="form-control form-control-sm" id="schoolName" placeholder="e.g. Greenwood International School">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Current Term</label>
+        <select class="form-select form-select-sm" id="currentTerm">
+          <option>First Term</option><option>Second Term</option><option>Third Term</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Current Session</label>
+        <input type="text" class="form-control form-control-sm" id="currentSession" placeholder="e.g. 2025/2026">
+      </div>
+      <div class="col-md-8">
+        <label class="form-label small">School Address</label>
+        <input type="text" class="form-control form-control-sm" id="schoolAddress" placeholder="e.g. Along Isinyi/Igbariam Road, Beside Oye Market, Anambra East L.G, Anambra State">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">School Motto</label>
+        <input type="text" class="form-control form-control-sm" id="schoolMotto" placeholder="e.g. Education for Excellence">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small">School Phone(s)</label>
+        <input type="text" class="form-control form-control-sm" id="schoolPhone" placeholder="e.g. 07036183613, 07032440593">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small">School Email</label>
+        <input type="email" class="form-control form-control-sm" id="schoolEmail" placeholder="e.g. school@example.com">
+      </div>
+    </div>
+    <div class="small text-muted mt-2">These appear on ID cards, result sheets, clearance lists, and the public result checker — and drive which term's scores are being entered right now.</div>
+
+    <div class="mt-3">
+      <label class="form-label small">School Logo</label><br>
+      <div class="sig-preview" id="logoPreview"><img id="logoImg" alt="School logo"></div>
+      <input type="file" class="form-control form-control-sm" id="logoFileInput" accept="image/*" style="max-width:300px;">
+      <button class="btn btn-sm btn-outline-danger mt-2" id="removeLogoBtn" style="display:none;">Remove Logo</button>
+    </div>
+  </div>
+
+  <!-- Branding & Print -->
+  <div class="card-panel">
+    <h2><i class="bi bi-palette"></i> Branding &amp; Printouts</h2>
+    <div class="small text-muted mb-3">Your logo appears at the top-left of every printout (result sheets, passcodes, clearance lists, ID cards, reports, timetables and receipts) in your school's own colours.</div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label small fw-bold">Colour theme</label>
+        <div id="presetRow" class="d-flex flex-wrap gap-2 mb-2"></div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label small">Main colour</label>
+            <div class="input-group input-group-sm"><input type="color" class="form-control form-control-color" id="brandPrimary" style="max-width:48px;"><input type="text" class="form-control" id="brandPrimaryHex" maxlength="7" placeholder="#7a1620"></div>
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Accent colour</label>
+            <div class="input-group input-group-sm"><input type="color" class="form-control form-control-color" id="brandAccent" style="max-width:48px;"><input type="text" class="form-control" id="brandAccentHex" maxlength="7" placeholder="#B8863B"></div>
+          </div>
+        </div>
+        <div class="small text-muted mt-1">Main colour: headings, table headers and the letterhead rule. Accent: the thin second rule and highlights.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small fw-bold">Second logo (optional, top-right of letterheads)</label><br>
+        <div class="sig-preview" id="logo2Preview"><img id="logo2Img" alt="Second logo"></div>
+        <input type="file" class="form-control form-control-sm" id="logo2FileInput" accept="image/*" style="max-width:300px;">
+        <button class="btn btn-sm btn-outline-danger mt-2" id="removeLogo2Btn" style="display:none;">Remove second logo</button>
+        <div class="small text-muted mt-1">For example a state, ministry or association emblem. Result sheets show the student's passport photo at the top-right instead.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Website</label>
+        <input type="text" class="form-control form-control-sm" id="schoolWebsite" placeholder="e.g. www.greenwood.edu.ng">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Registration / approval no.</label>
+        <input type="text" class="form-control form-control-sm" id="schoolRegNo" placeholder="e.g. Reg. No. EKS/MOE/0123">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Printout footer note</label>
+        <input type="text" class="form-control form-control-sm" id="printFooter" placeholder="e.g. Fees once paid are not refundable">
+      </div>
+      <div class="col-12">
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="printWatermark"><label class="form-check-label small" for="printWatermark">Show a faint logo watermark behind result sheets</label></div>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <div class="small fw-bold mb-1" style="color:#14213D;">Live preview (A4 letterhead)</div>
+      <div id="brandPreview" style="background:#fff;border:1px solid #DCD0B4;border-radius:10px;padding:14px 16px;max-width:620px;"></div>
+    </div>
+  </div>
+
+  <!-- Public Portal Payment Info -->
+  <div class="card-panel">
+    <h2><i class="bi bi-bank"></i> Public Portal — School Bank Account (for Fee Payment)</h2>
+    <div class="small text-muted mb-2">Shown to parents on the public Pay Fees page before they make a bank transfer, so they know exactly where to send the money before uploading their receipt.</div>
+    <div class="row g-2">
+      <div class="col-md-4">
+        <label class="form-label small">Account Number</label>
+        <input type="text" class="form-control form-control-sm" id="bankAccountNumber" placeholder="e.g. 0123456789">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Bank Name</label>
+        <input type="text" class="form-control form-control-sm" id="bankName" placeholder="e.g. Access Bank">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Account Name</label>
+        <input type="text" class="form-control form-control-sm" id="bankAccountName" placeholder="e.g. Greenwood International School">
+      </div>
+    </div>
+    <div class="small text-muted mt-2">This is the school's own account for collecting fees from parents — separate from OKV Technology's account on the Upgrade page, which is for your subscription payment.</div>
+  </div>
+
+  <!-- Term Info (closing/resumption dates, times school opened) -->
+  <div class="card-panel">
+    <h2><i class="bi bi-calendar-event"></i> Term Info — <span id="tiHeading">current term/session</span></h2>
+    <div class="small text-muted mb-2">These print on every result sheet for the term/session selected above (Settings → School Info).</div>
+    <div class="row g-2">
+      <div class="col-md-4">
+        <label class="form-label small">No. of Times School Opened</label>
+        <input type="number" min="0" class="form-control form-control-sm" id="ti_opened">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Closing Date</label>
+        <input type="date" class="form-control form-control-sm" id="ti_closing">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Resumption Date</label>
+        <input type="date" class="form-control form-control-sm" id="ti_resumption">
+      </div>
+    </div>
+  </div>
+
+  <!-- Schools / Branches (multi-school support) -->
+  <div class="card-panel">
+    <h2><i class="bi bi-diagram-2"></i> Schools / Branches</h2>
+    <div class="small text-muted mb-2">Running more than one school or campus under this account? Add each one here, then pick the active one — Students, Staff, Classes, and Results are all filtered to whichever school is active. Leave this empty if you only run a single school.</div>
+    <div id="schoolRows"></div>
+    <button class="btn btn-sm btn-outline-secondary" id="addSchoolBtn"><i class="bi bi-plus"></i> Add School / Branch</button>
+    <div class="mt-2" id="activeSchoolPickWrap" style="display:none;">
+      <label class="form-label small">Active School/Branch (for this device)</label>
+      <select class="form-select form-select-sm" id="activeSchoolSelect" style="max-width:320px;"></select>
+    </div>
+  </div>
+
+  <!-- Classes & Arms -->
+  <div class="card-panel">
+    <h2><i class="bi bi-diagram-3"></i> Classes &amp; Arms</h2>
+    <div class="small text-muted mb-2">Add each class your school runs, choose its section (this decides which CA count applies), then list its arms (e.g. <code>A, B, C, D</code>) separated by commas. Leave arms blank for a class with no arms.</div>
+    <div class="d-flex flex-wrap gap-2 mb-2" id="classPresetRow"></div>
+    <div id="classRows"></div>
+    <button class="btn btn-sm btn-outline-secondary" id="addClassBtn"><i class="bi bi-plus"></i> Add Class</button>
+  </div>
+
+  <!-- Subjects -->
+  <div class="card-panel">
+    <h2><i class="bi bi-journal-bookmark"></i> Subjects</h2>
+    <div class="small text-muted mb-2">Each section has its own subject list — Nursery subjects (e.g. Writing, Poem, Drawing/Colouring) are usually very different from Secondary subjects (e.g. Physics, Chemistry). Pick a section below to manage its list.</div>
+    <div class="tabbar mb-2" id="subjectSectionTabs">
+      <button data-sec="Kindergarten" class="active">Kindergarten (KG)</button>
+      <button data-sec="Nursery">Nursery</button>
+      <button data-sec="Primary">Primary</button>
+      <button data-sec="Secondary">Secondary</button>
+    </div>
+    <div class="chip-list" id="subjectChips"></div>
+    <div class="mb-2"><button class="btn btn-sm btn-outline-secondary" id="presetSubjectsBtn"><i class="bi bi-magic"></i> Add suggested subjects for this section</button></div>
+    <div class="d-flex gap-2">
+      <input type="text" class="form-control form-control-sm" id="newSubjectInput" placeholder="e.g. Mathematics" style="max-width:240px;">
+      <button class="btn btn-sm btn-outline-secondary" id="addSubjectBtn">Add</button>
+    </div>
+  </div>
+
+  <!-- CA Counts -->
+  <div class="card-panel">
+    <h2><i class="bi bi-clipboard-check"></i> Continuous Assessment (CA) Count</h2>
+    <div class="small text-muted mb-2">How many CA scores are entered per term before the exam score, by section.</div>
+    <div class="ca-row"><label>Kindergarten (KG)</label>
+      <select class="form-select form-select-sm" style="max-width:100px;" id="ca_Kindergarten"><option>2</option><option>3</option><option>4</option></select>
+    </div>
+    <div class="ca-row"><label>Nursery</label>
+      <select class="form-select form-select-sm" style="max-width:100px;" id="ca_Nursery"><option>2</option><option>3</option><option>4</option></select>
+    </div>
+    <div class="ca-row"><label>Primary</label>
+      <select class="form-select form-select-sm" style="max-width:100px;" id="ca_Primary"><option>2</option><option>3</option><option>4</option></select>
+    </div>
+    <div class="ca-row"><label>Secondary</label>
+      <select class="form-select form-select-sm" style="max-width:100px;" id="ca_Secondary"><option>2</option><option>3</option><option>4</option></select>
+    </div>
+  </div>
+
+  <!-- Grading method -->
+  <div class="card-panel">
+    <h2><i class="bi bi-award"></i> Grading Method</h2>
+    <div class="small text-muted mb-2">Choose the grade scale used on score entry, report sheets, result checks and dashboards. Existing scores are regraded automatically.</div>
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="radio" name="gradingMethod" id="grading_AF" value="AF" checked>
+      <label class="form-check-label" for="grading_AF"><b>A–F</b> (standard) — A 70–100, B 60–69, C 50–59, D 45–49, E 40–44, F 0–39</label>
+    </div>
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="radio" name="gradingMethod" id="grading_WAEC" value="WAEC">
+      <label class="form-check-label" for="grading_WAEC"><b>WAEC A1–F9</b> — A1 75–100, B2 70–74, B3 65–69, C4 60–64, C5 55–59, C6 50–54, D7 45–49, E8 40–44, F9 0–39</label>
+    </div>
+  </div>
+
+  <!-- Principal Signature -->
+  <div class="card-panel">
+    <h2><i class="bi bi-vector-pen"></i> Principal / Head Teacher Signature</h2>
+    <div class="small text-muted mb-2">This signature will automatically appear on result sheets, clearance slips, and other official documents wherever a principal's signature is needed.</div>
+    <div class="mb-2">
+      <label class="form-label small">Principal / Head Teacher Name</label>
+      <input type="text" class="form-control form-control-sm" id="principalName" style="max-width:300px;">
+    </div>
+    <div class="sig-preview" id="sigPreview"><img id="sigImg" alt="Principal signature"></div>
+    <input type="file" class="form-control form-control-sm" id="sigFileInput" accept="image/*" style="max-width:300px;">
+    <button class="btn btn-sm btn-outline-danger mt-2" id="removeSigBtn" style="display:none;">Remove Signature</button>
+  </div>
+
+  <div class="card-panel">
+    <h2><i class="bi bi-calendar-check"></i> Attendance &amp; Data Management</h2>
+    <div class="small text-muted mb-2">Attendance is always recorded per class per day and rolled up into "days present" totals per student automatically — this only controls how long the day-by-day records stay in your live spreadsheet before moving to your Archive (nothing is ever deleted).</div>
+    <div class="mb-3">
+      <label class="form-label small">Attendance Record-Keeping</label>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="attendanceMode" id="attMode_summary" value="summary">
+        <label class="form-check-label small" for="attMode_summary"><b>Summary (recommended)</b> — day-by-day records archive quickly (~4 months) once a term has clearly passed; term totals are always kept.</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="attendanceMode" id="attMode_detailed" value="detailed">
+        <label class="form-check-label small" for="attMode_detailed"><b>Detailed</b> — day-by-day records stay live for ~2 academic years, for schools that want longer drill-down available for audits or disputes.</label>
+      </div>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="archivingEnabled" checked>
+      <label class="form-check-label small" for="archivingEnabled">Automatically archive old records (recommended — keeps your spreadsheet fast and well under Google's size limit)</label>
+    </div>
+
+    <hr class="my-3">
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="weeklyAttendanceEmailsEnabled">
+      <label class="form-check-label small" for="weeklyAttendanceEmailsEnabled"><b>Email every parent a weekly attendance summary</b> — sent automatically each Saturday for the week just finished, with your school's name and their child's day-by-day attendance.</label>
+    </div>
+    <div class="box" style="background:#FCF3DA;border:1px solid #E8D27A;border-radius:8px;padding:.6rem .9rem;font-size:.78rem;color:#5b5442;margin-bottom:.75rem;">
+      Email sending has a daily limit shared across every school on this platform. If that limit is reached on a given day, remaining emails for that run are skipped (never duplicated later) — this is rare, but worth knowing before enabling it for a very large school.
+    </div>
+    <div class="mb-1">
+      <label class="form-label small">Term End Date (optional)</label>
+      <input type="date" class="form-control form-control-sm" id="termEndDate" style="max-width:220px;">
+      <div class="small text-muted mt-1">When set, every parent gets a one-time term attendance summary automatically on this date (or the next day the system checks, if the school was offline that day). Leave blank to skip automatic term summaries.</div>
+    </div>
+  </div>
+
+  <div class="small text-muted mb-2">Fee amounts shown on result sheets and the public payment page come from <a href="payments.html">Fee Payments → Fee Types</a>, not from here.</div>
+
+  <button class="btn btn-forest w-100" id="saveAllBtn2"><i class="bi bi-check2"></i> Save Settings</button>
+  <div id="saveMsg" class="small text-center mt-2"></div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="print-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const ALLOWED_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => ALLOWED_ROLES.includes(r))){
+  // Bursar-only users used to have a Fee Items card here — fees now live entirely
+  // on Fee Payments → Fee Types, so send them straight there instead.
+  window.top.location.href = 'dashboard.html' + (roles.includes('Bursar / Accountant') ? '#payments' : '');
+}
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+function renderSyncStatus(detail){
+  const el = document.getElementById('syncStatusText');
+  const dotClass = detail.syncing ? 'syncing' : (detail.online ? 'online' : 'offline');
+  const label = detail.syncing ? 'Syncing…' : (detail.online ? 'Online' : 'Offline');
+  const pendingTxt = detail.pending ? ` — ${detail.pending} pending` : '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span>${label}${pendingTxt}`;
+}
+window.smsSync.onStatus(renderSyncStatus);
+
+let currentRecordId = null;
+let state = window.smsSettings.defaultSettings();
+
+/* ============================== CLASSES & ARMS ============================== */
+function renderClassRows(){
+  const box = document.getElementById('classRows');
+  box.innerHTML = state.classes.map((cls, i) => `
+    <div class="class-row" data-idx="${i}">
+      <input type="text" class="form-control form-control-sm cls-name" value="${escapeAttr(cls)}" placeholder="Class name">
+      <select class="form-select form-select-sm cls-section">
+        <option value="Kindergarten" ${state.classSections[cls]==='Kindergarten'?'selected':''}>Kindergarten (KG)</option>
+        <option value="Nursery" ${state.classSections[cls]==='Nursery'?'selected':''}>Nursery</option>
+        <option value="Primary" ${state.classSections[cls]==='Primary'?'selected':''}>Primary</option>
+        <option value="Secondary" ${(!state.classSections[cls]||state.classSections[cls]==='Secondary')?'selected':''}>Secondary</option>
+      </select>
+      <input type="text" class="form-control form-control-sm cls-arms" value="${escapeAttr((state.classArms[cls]||[]).join(', '))}" placeholder="Arms e.g. A, B, C">
+      <button class="btn btn-sm btn-outline-danger remove-class-btn" data-idx="${i}"><i class="bi bi-trash"></i></button>
+    </div>`).join('') || '<div class="small text-muted">No classes added yet.</div>';
+
+  box.querySelectorAll('.class-row').forEach(row => {
+    const sel = row.querySelector('.cls-section');
+    sel.addEventListener('change', () => { sel.dataset.touched = '1'; });
+    row.querySelector('.cls-name').addEventListener('change', (e) => {
+      if (!sel.dataset.touched) sel.value = window.smsSettings.guessSection(e.target.value);
+    });
+  });
+  box.querySelectorAll('.remove-class-btn').forEach(b => b.addEventListener('click', () => {
+    const idx = Number(b.dataset.idx);
+    const cls = state.classes[idx];
+    delete state.classArms[cls];
+    state.classes.splice(idx, 1);
+    renderClassRows();
+  }));
+}
+document.getElementById('addClassBtn').addEventListener('click', () => {
+  state.classes.push('');
+  renderClassRows();
+});
+// One-tap sets of common classes (each added only if it is not already there, with arm A and the right section).
+const CLASS_PRESETS = [
+  { label: 'KG1 - KG3', names: ['KG1','KG2','KG3'], section: 'Kindergarten' },
+  { label: 'Nursery 1 - 3', names: ['Nursery 1','Nursery 2','Nursery 3'], section: 'Nursery' },
+  { label: 'Primary 1 - 6', names: ['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5','Primary 6'], section: 'Primary' },
+  { label: 'JSS1 - JSS3', names: ['JSS1','JSS2','JSS3'], section: 'Secondary' },
+  { label: 'SS1 - SS3', names: ['SS1','SS2','SS3'], section: 'Secondary' }
+];
+function renderClassPresets(){
+  const box = document.getElementById('classPresetRow');
+  box.innerHTML = CLASS_PRESETS.map((p, i) => `<button type="button" class="btn btn-sm btn-outline-secondary class-preset-btn" data-i="${i}" style="font-size:.74rem;">+ ${p.label}</button>`).join('');
+  box.querySelectorAll('.class-preset-btn').forEach(b => b.addEventListener('click', () => {
+    collectClassRows();
+    const p = CLASS_PRESETS[Number(b.dataset.i)];
+    p.names.forEach(n => { if (!state.classes.includes(n)) { state.classes.push(n); state.classSections[n] = p.section; state.classArms[n] = ['A']; } });
+    renderClassRows();
+  }));
+}
+function collectClassRows(){
+  const rows = document.querySelectorAll('#classRows .class-row');
+  const classes = []; const classArms = {}; const classSections = {};
+  rows.forEach(row => {
+    const name = row.querySelector('.cls-name').value.trim();
+    const section = row.querySelector('.cls-section').value;
+    const arms = row.querySelector('.cls-arms').value.split(',').map(a=>a.trim()).filter(Boolean);
+    if (!name) return;
+    classes.push(name);
+    classSections[name] = section;
+    if (arms.length) classArms[name] = arms;
+  });
+  state.classes = classes;
+  state.classArms = classArms;
+  state.classSections = classSections;
+}
+
+/* ============================== SUBJECTS (one list per section: Kindergarten, Nursery, Primary, Secondary) ============================== */
+const SECTIONS = ['Kindergarten','Nursery','Primary','Secondary'];
+let activeSection = 'Secondary';
+function sectionList(sec){
+  state.subjectsBySection = { Kindergarten: [], Nursery: [], Primary: [], Secondary: [], ...(state.subjectsBySection || {}) };
+  return state.subjectsBySection[sec];
+}
+function renderSubjects(){
+  const list = sectionList(activeSection);
+  document.querySelectorAll('#subjectSectionTabs button').forEach(b => b.classList.toggle('active', b.dataset.sec === activeSection));
+  document.getElementById('subjectChips').innerHTML = list.map((s,i) => `
+    <span class="chip">${escapeHtml(s)}<button data-idx="${i}" class="remove-subject-btn">✕</button></span>
+  `).join('') || `<span class="small text-muted">No subjects for ${activeSection} yet. ${(state.subjects||[]).length ? 'Until you add some, classes in this section use the school-wide list.' : ''}</span>`;
+  document.querySelectorAll('.remove-subject-btn').forEach(b => b.addEventListener('click', () => {
+    list.splice(Number(b.dataset.idx), 1);
+    renderSubjects();
+  }));
+}
+document.querySelectorAll('#subjectSectionTabs button').forEach(b => b.addEventListener('click', () => { activeSection = b.dataset.sec; renderSubjects(); }));
+document.getElementById('addSubjectBtn').addEventListener('click', () => {
+  const input = document.getElementById('newSubjectInput');
+  const val = input.value.trim();
+  const list = sectionList(activeSection);
+  if (val && !list.includes(val)) { list.push(val); renderSubjects(); }
+  input.value = '';
+});
+document.getElementById('newSubjectInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter'){ e.preventDefault(); document.getElementById('addSubjectBtn').click(); }
+});
+document.getElementById('presetSubjectsBtn').addEventListener('click', () => {
+  const preset = window.smsSettings.SUBJECT_PRESETS[activeSection];
+  if (!preset){ alert('There is no ready-made list for the Secondary section because it differs a lot between schools. Type your subjects above.'); return; }
+  const list = sectionList(activeSection);
+  preset.forEach(s => { if (!list.includes(s)) list.push(s); });
+  renderSubjects();
+});
+// Schools that saved one school-wide subject list before sections existed keep working: fill each empty section from it once.
+function migrateLegacySubjects(){
+  const flat = state.subjects || [];
+  if (!flat.length) return;
+  const used = new Set(Object.values(state.classSections || {}));
+  if (!used.size) used.add('Secondary');
+  used.forEach(sec => { if (sec === 'Kindergarten') return; const l = sectionList(sec); if (!l.length) state.subjectsBySection[sec] = flat.slice(); });
+}
+
+/* ============================== SCHOOL LOGO ============================== */
+function renderLogo(){
+  const preview = document.getElementById('logoPreview');
+  const img = document.getElementById('logoImg');
+  const removeBtn = document.getElementById('removeLogoBtn');
+  if (state.schoolLogo){
+    img.src = state.schoolLogo;
+    preview.style.display = 'block';
+    removeBtn.style.display = 'inline-block';
+  } else {
+    preview.style.display = 'none';
+    removeBtn.style.display = 'none';
+  }
+}
+document.getElementById('logoFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  state.schoolLogo = await resizeImageToDataUrl(file, 300, 300);
+  renderLogo();
+});
+document.getElementById('removeLogoBtn').addEventListener('click', () => {
+  state.schoolLogo = '';
+  document.getElementById('logoFileInput').value = '';
+  renderLogo();
+});
+
+
+/* ============================== BRANDING & PRINTOUTS ============================== */
+function renderPresets(){
+  const row = document.getElementById('presetRow');
+  row.innerHTML = window.smsPrint.PRESETS.map((p, i) => `
+    <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 preset-btn" data-i="${i}" style="font-size:.72rem;">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${p.primary};"></span>
+      <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${p.accent};margin-left:-8px;border:1px solid #fff;"></span> ${p.name}
+    </button>`).join('');
+  row.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => {
+    const p = window.smsPrint.PRESETS[Number(b.dataset.i)];
+    setBrandColors(p.primary, p.accent);
+  }));
+}
+function setBrandColors(primary, accent){
+  document.getElementById('brandPrimary').value = primary; document.getElementById('brandPrimaryHex').value = primary;
+  document.getElementById('brandAccent').value = accent;   document.getElementById('brandAccentHex').value = accent;
+  state.brandPrimary = primary; state.brandAccent = accent;
+  renderBrandPreview();
+}
+function bindColor(pickerId, hexId, key, fallback){
+  const picker = document.getElementById(pickerId), hex = document.getElementById(hexId);
+  picker.addEventListener('input', () => { hex.value = picker.value; state[key] = picker.value; renderBrandPreview(); });
+  hex.addEventListener('input', () => {
+    const ok = window.smsPrint.cleanHex(hex.value, '');
+    if (ok){ picker.value = ok; state[key] = ok; renderBrandPreview(); }
+  });
+}
+bindColor('brandPrimary', 'brandPrimaryHex', 'brandPrimary');
+bindColor('brandAccent', 'brandAccentHex', 'brandAccent');
+
+function renderLogo2(){
+  const preview = document.getElementById('logo2Preview'), img = document.getElementById('logo2Img'), removeBtn = document.getElementById('removeLogo2Btn');
+  if (state.schoolLogo2){ img.src = state.schoolLogo2; preview.style.display = 'block'; removeBtn.style.display = 'inline-block'; }
+  else { preview.style.display = 'none'; removeBtn.style.display = 'none'; }
+}
+document.getElementById('logo2FileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  state.schoolLogo2 = await resizeImageToDataUrl(file, 300, 300);
+  renderLogo2(); renderBrandPreview();
+});
+document.getElementById('removeLogo2Btn').addEventListener('click', () => {
+  state.schoolLogo2 = ''; document.getElementById('logo2FileInput').value = ''; renderLogo2(); renderBrandPreview();
+});
+
+// Live letterhead preview — uses the same code the real printouts use, from what is typed right now.
+function renderBrandPreview(){
+  const live = Object.assign({}, state, {
+    schoolName: document.getElementById('schoolName').value.trim(), schoolAddress: document.getElementById('schoolAddress').value.trim(),
+    schoolMotto: document.getElementById('schoolMotto').value.trim(), schoolPhone: document.getElementById('schoolPhone').value.trim(),
+    schoolEmail: document.getElementById('schoolEmail').value.trim(), schoolWebsite: document.getElementById('schoolWebsite').value.trim(),
+    schoolRegNo: document.getElementById('schoolRegNo').value.trim()
+  });
+  const b = window.smsPrint.brand(live);
+  window.smsPrint.applyTheme(b, { page: false });
+  document.getElementById('brandPreview').innerHTML = window.smsPrint.letterhead(b, { showEmptyLogo: true }) +
+    `<div style="margin-top:12px;background:${b.primary};color:${b.onPrimary};text-align:center;font-weight:800;font-size:11px;letter-spacing:.1em;padding:6px 0;border-radius:4px;">FIRST TERM REPORT SHEET</div>` +
+    `<div style="margin-top:8px;height:6px;border-radius:3px;background:${b.tintStrong};"></div>`;
+}
+['schoolName','schoolAddress','schoolMotto','schoolPhone','schoolEmail','schoolWebsite','schoolRegNo'].forEach(id => document.getElementById(id).addEventListener('input', renderBrandPreview));
+document.getElementById('logoFileInput').addEventListener('change', () => setTimeout(renderBrandPreview, 400));
+document.getElementById('removeLogoBtn').addEventListener('click', () => setTimeout(renderBrandPreview, 50));
+renderPresets();
+
+function loadBrandFields(){
+  const b = window.smsPrint.brand(state);
+  document.getElementById('brandPrimary').value = b.primary; document.getElementById('brandPrimaryHex').value = b.primary;
+  document.getElementById('brandAccent').value = b.accent;   document.getElementById('brandAccentHex').value = b.accent;
+  document.getElementById('schoolWebsite').value = state.schoolWebsite || '';
+  document.getElementById('schoolRegNo').value = state.schoolRegNo || '';
+  document.getElementById('printFooter').value = state.printFooter || '';
+  document.getElementById('printWatermark').checked = state.printWatermark === true;
+  renderLogo2(); renderBrandPreview();
+}
+function collectBrandFields(){
+  state.brandPrimary = window.smsPrint.cleanHex(document.getElementById('brandPrimaryHex').value, state.brandPrimary || '');
+  state.brandAccent = window.smsPrint.cleanHex(document.getElementById('brandAccentHex').value, state.brandAccent || '');
+  state.schoolWebsite = document.getElementById('schoolWebsite').value.trim();
+  state.schoolRegNo = document.getElementById('schoolRegNo').value.trim();
+  state.printFooter = document.getElementById('printFooter').value.trim();
+  state.printWatermark = document.getElementById('printWatermark').checked;
+}
+
+/* ============================== TERM INFO ============================== */
+function termInfoKey(){
+  return `${document.getElementById('currentTerm').value}|${document.getElementById('currentSession').value.trim()}`;
+}
+function loadTermInfoFields(){
+  const key = termInfoKey();
+  const ti = (state.termInfo||{})[key] || {};
+  document.getElementById('ti_opened').value = ti.timesSchoolOpened || '';
+  document.getElementById('ti_closing').value = ti.closingDate || '';
+  document.getElementById('ti_resumption').value = ti.resumptionDate || '';
+  document.getElementById('tiHeading').textContent = `${document.getElementById('currentTerm').value} / ${document.getElementById('currentSession').value.trim() || '(no session set)'}`;
+}
+function collectTermInfo(){
+  if (!state.termInfo) state.termInfo = {};
+  const key = termInfoKey();
+  state.termInfo[key] = {
+    timesSchoolOpened: Number(document.getElementById('ti_opened').value) || 0,
+    closingDate: document.getElementById('ti_closing').value,
+    resumptionDate: document.getElementById('ti_resumption').value
+  };
+}
+document.getElementById('currentTerm').addEventListener('change', loadTermInfoFields);
+document.getElementById('currentSession').addEventListener('change', loadTermInfoFields);
+
+/* ============================== SCHOOLS / BRANCHES ============================== */
+function renderSchoolRows(){
+  const box = document.getElementById('schoolRows');
+  box.innerHTML = (state.schools||[]).map((s, i) => `
+    <div class="class-row" data-idx="${i}">
+      <input type="text" class="form-control form-control-sm school-name" value="${escapeAttr(s.name)}" placeholder="School/branch name" style="max-width:220px;">
+      <input type="text" class="form-control form-control-sm school-address" value="${escapeAttr(s.address||'')}" placeholder="Address" style="flex:1;min-width:180px;">
+      <button class="btn btn-sm btn-outline-danger remove-school-btn" data-idx="${i}"><i class="bi bi-trash"></i></button>
+    </div>`).join('') || '<div class="small text-muted">No additional schools/branches added — this account manages a single school.</div>';
+  box.querySelectorAll('.remove-school-btn').forEach(b => b.addEventListener('click', () => {
+    state.schools.splice(Number(b.dataset.idx), 1);
+    renderSchoolRows(); renderActiveSchoolPicker();
+  }));
+  renderActiveSchoolPicker();
+}
+function renderActiveSchoolPicker(){
+  const wrap = document.getElementById('activeSchoolPickWrap');
+  const sel = document.getElementById('activeSchoolSelect');
+  if (!state.schools || !state.schools.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  sel.innerHTML = state.schools.map(s => `<option value="${s.id}" ${state.activeSchoolId===s.id?'selected':''}>${escapeHtml(s.name)}</option>`).join('');
+}
+document.getElementById('addSchoolBtn').addEventListener('click', () => {
+  if (!state.schools) state.schools = [];
+  const id = 'sch_' + Date.now().toString(36);
+  state.schools.push({ id, name: '', address: '' });
+  renderSchoolRows();
+});
+function collectSchools(){
+  const rows = document.querySelectorAll('#schoolRows .class-row');
+  const schools = [];
+  rows.forEach((row, i) => {
+    const name = row.querySelector('.school-name').value.trim();
+    const address = row.querySelector('.school-address').value.trim();
+    if (!name) return;
+    schools.push({ id: (state.schools[i] && state.schools[i].id) || ('sch_' + Date.now().toString(36) + i), name, address });
+  });
+  state.schools = schools;
+  state.activeSchoolId = document.getElementById('activeSchoolSelect').value || (schools[0] && schools[0].id) || '';
+}
+
+/* ============================== PRINCIPAL SIGNATURE ============================== */
+function renderSignature(){
+  const preview = document.getElementById('sigPreview');
+  const img = document.getElementById('sigImg');
+  const removeBtn = document.getElementById('removeSigBtn');
+  if (state.principalSignature){
+    img.src = state.principalSignature;
+    preview.style.display = 'block';
+    removeBtn.style.display = 'inline-block';
+  } else {
+    preview.style.display = 'none';
+    removeBtn.style.display = 'none';
+  }
+}
+document.getElementById('sigFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  state.principalSignature = await resizeImageToDataUrl(file, 400, 150);
+  renderSignature();
+});
+document.getElementById('removeSigBtn').addEventListener('click', () => {
+  state.principalSignature = '';
+  document.getElementById('sigFileInput').value = '';
+  renderSignature();
+});
+
+// Resizes/compresses an uploaded image client-side so it fits comfortably in a Sheet cell.
+/* ============================== LOAD / SAVE ============================== */
+async function loadAll(){
+  const { recordId, payload } = await window.smsSettings.getSettings();
+  currentRecordId = recordId;
+  state = payload;
+  migrateLegacySubjects();
+  activeSection = (state.classes[0] && state.classSections[state.classes[0]]) || 'Secondary';
+  renderClassPresets();
+  renderClassRows();
+  renderSubjects();
+  renderSignature();
+  renderLogo();
+  renderSchoolRows();
+  document.getElementById('principalName').value = state.principalName || '';
+  document.getElementById('schoolName').value = state.schoolName || '';
+  document.getElementById('schoolAddress').value = state.schoolAddress || '';
+  document.getElementById('schoolMotto').value = state.schoolMotto || '';
+  document.getElementById('schoolPhone').value = state.schoolPhone || '';
+  document.getElementById('schoolEmail').value = state.schoolEmail || '';
+  document.getElementById('bankAccountNumber').value = state.bankAccountNumber || '';
+  document.getElementById('bankName').value = state.bankName || '';
+  document.getElementById('bankAccountName').value = state.bankAccountName || '';
+  document.getElementById('currentTerm').value = state.currentTerm || 'First Term';
+  document.getElementById('currentSession').value = state.currentSession || '';
+  document.getElementById('ca_Kindergarten').value = state.caCounts.Kindergarten || 3;
+  document.getElementById('ca_Nursery').value = state.caCounts.Nursery || 3;
+  document.getElementById('ca_Primary').value = state.caCounts.Primary || 3;
+  document.getElementById('ca_Secondary').value = state.caCounts.Secondary || 3;
+  document.getElementById(state.gradingMethod === 'WAEC' ? 'grading_WAEC' : 'grading_AF').checked = true;
+  const attMode = state.attendanceMode === 'detailed' ? 'attMode_detailed' : 'attMode_summary';
+  document.getElementById(attMode).checked = true;
+  document.getElementById('archivingEnabled').checked = state.archivingEnabled !== false;
+  document.getElementById('weeklyAttendanceEmailsEnabled').checked = state.weeklyAttendanceEmailsEnabled === true;
+  document.getElementById('termEndDate').value = state.termEndDate || '';
+  loadTermInfoFields();
+  loadBrandFields();
+}
+
+// The whole settings record lives in ONE sheet cell (max 50,000 characters); logos and the signature are the bulk of it.
+function settingsSizeProblem(){
+  const n = JSON.stringify(state).length;
+  return n > 46000 ? `Your logos and signature together are too large to save (${n.toLocaleString()} of 46,000 characters). Remove the second logo or re-upload simpler images.` : '';
+}
+
+async function saveAll(){
+  collectBrandFields();
+  collectClassRows();
+  collectTermInfo();
+  collectSchools();
+  state.principalName = document.getElementById('principalName').value.trim();
+  state.schoolName = document.getElementById('schoolName').value.trim();
+  state.schoolAddress = document.getElementById('schoolAddress').value.trim();
+  state.schoolMotto = document.getElementById('schoolMotto').value.trim();
+  state.schoolPhone = document.getElementById('schoolPhone').value.trim();
+  state.schoolEmail = document.getElementById('schoolEmail').value.trim();
+  state.bankAccountNumber = document.getElementById('bankAccountNumber').value.trim();
+  state.bankName = document.getElementById('bankName').value.trim();
+  state.bankAccountName = document.getElementById('bankAccountName').value.trim();
+  state.currentTerm = document.getElementById('currentTerm').value;
+  state.currentSession = document.getElementById('currentSession').value.trim();
+  state.caCounts = {
+    Kindergarten: Number(document.getElementById('ca_Kindergarten').value),
+    Nursery: Number(document.getElementById('ca_Nursery').value),
+    Primary: Number(document.getElementById('ca_Primary').value),
+    Secondary: Number(document.getElementById('ca_Secondary').value)
+  };
+  state.gradingMethod = document.getElementById('grading_WAEC').checked ? 'WAEC' : 'AF';
+  state.attendanceMode = document.getElementById('attMode_detailed').checked ? 'detailed' : 'summary';
+  state.archivingEnabled = document.getElementById('archivingEnabled').checked;
+  state.weeklyAttendanceEmailsEnabled = document.getElementById('weeklyAttendanceEmailsEnabled').checked;
+  state.termEndDate = document.getElementById('termEndDate').value;
+  const msg = document.getElementById('saveMsg');
+  const sizeProblem = settingsSizeProblem();
+  if (sizeProblem){ msg.textContent = sizeProblem; msg.className = 'small text-center mt-2 text-danger'; return; }
+  msg.textContent = 'Saving...'; msg.className = 'small text-center mt-2 text-muted';
+  const newId = await window.smsSettings.saveSettings(state, currentRecordId);
+  currentRecordId = currentRecordId || newId;
+  msg.textContent = navigator.onLine ? 'Saved.' : 'Saved locally — will sync when you\'re back online.';
+  msg.className = 'small text-center mt-2 text-success';
+  setTimeout(()=>{ msg.textContent = ''; }, 3000);
+}
+document.getElementById('saveAllBtn').addEventListener('click', saveAll);
+document.getElementById('saveAllBtn2').addEventListener('click', saveAll);
+
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeAttr(str){ return escapeHtml(str); }
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+<script src="img-lib.js"></script>
+</body>
+</html>

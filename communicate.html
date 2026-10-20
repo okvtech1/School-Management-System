@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Parent Communication</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;}
+  table{font-size:.82rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .student-pick-list{max-height:260px;overflow-y:auto;border:1px solid #DCD0B4;border-radius:10px;padding:.6rem;}
+  .student-pick-row{display:flex;align-items:center;gap:.5rem;padding:.3rem 0;font-size:.85rem;border-bottom:1px solid #F1E7D3;}
+  .student-pick-row:last-child{border-bottom:none;}
+  .channel-status{font-size:.68rem;font-weight:700;padding:.15em .5em;border-radius:5px;margin-right:.3rem;}
+  .cs-sent{background:#DFF3E4;color:#1E6B3A;}
+  .cs-failed,.cs-none{background:#F1E7D3;color:#8A6A12;}
+  .gateway-note{font-size:.78rem;color:#8A6A12;background:#FCF3DA;border-radius:10px;padding:.6rem .8rem;margin-bottom:1rem;}
+  .no-perm-note{font-size:.82rem;color:#8A6A12;background:#FCF3DA;border-radius:10px;padding:.6rem .8rem;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — Communication requires connectivity.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <h1>Parent Communication</h1>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+      <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+
+  <div id="noPermNote" class="no-perm-note" style="display:none;">You don't have permission to send messages to parents.</div>
+
+  <div id="sendArea">
+    <div class="gateway-note">
+      <i class="bi bi-info-circle"></i> Email sends for real right now. SMS and WhatsApp are shown here as options, but need a gateway (e.g. Termii, Twilio, Meta WhatsApp Business) configured before they'll actually deliver — until then, sends on those channels are logged honestly as "gateway not configured" rather than pretending to succeed.
+    </div>
+
+    <div class="card-panel">
+      <h2><i class="bi bi-people"></i> Recipients</h2>
+      <div class="row g-2 mb-2">
+        <div class="col-md-6">
+          <label class="form-label small">Filter by Class</label>
+          <select class="form-select form-select-sm" id="classFilter"><option value="">All Classes</option></select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Search by Name</label>
+          <input class="form-control form-control-sm" id="studentSearch" placeholder="Type a name…">
+        </div>
+      </div>
+      <div class="mb-2">
+        <button class="btn btn-sm btn-outline-secondary" id="selectAllBtn">Select All (Filtered)</button>
+        <button class="btn btn-sm btn-outline-secondary" id="clearSelBtn">Clear Selection</button>
+        <span class="small text-muted ms-2" id="selCountText">0 selected</span>
+      </div>
+      <div class="student-pick-list" id="studentPickList"></div>
+    </div>
+
+    <div class="card-panel">
+      <h2><i class="bi bi-chat-dots"></i> Message</h2>
+      <div class="row g-2 mb-2">
+        <div class="col-md-4">
+          <label class="form-label small">Message Type</label>
+          <select class="form-select form-select-sm" id="msgTemplate">
+            <option value="personalized">Personalized / Individual</option>
+            <option value="birthday">Birthday</option>
+            <option value="meeting">School Meeting</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label small">Subject</label>
+          <input class="form-control form-control-sm" id="msgSubject" placeholder="Subject">
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small">Message Body</label>
+        <textarea class="form-control form-control-sm" id="msgBody" rows="4" placeholder="Type your message…"></textarea>
+        <div class="form-text">Use <code>{name}</code> anywhere in the message — it's replaced with each recipient's own name before sending, so one message can still feel personal to everyone, individually or at once.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small d-block">Send Via</label>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="chEmail" checked><label class="form-check-label small" for="chEmail">Email</label></div>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="chSms"><label class="form-check-label small" for="chSms">SMS</label></div>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="chWhatsapp"><label class="form-check-label small" for="chWhatsapp">WhatsApp</label></div>
+      </div>
+      <button class="btn btn-forest" id="sendParentMsgBtn">Send Message</button>
+      <div id="sendResultBox" class="mt-3" style="display:none;">
+        <h2 style="font-size:.9rem;">Send Results</h2>
+        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Recipient</th><th>Channels</th></tr></thead><tbody id="sendResultsBody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session){ window.top.location.href = 'login.html'; }
+const COMMS_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'];
+const roles = session.roles || [];
+const canMessageParents = roles.some(r => COMMS_ROLES.includes(r));
+if (!canMessageParents){
+  document.getElementById('noPermNote').style.display = 'block';
+  document.getElementById('sendArea').style.display = 'none';
+}
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  const data = await res.json();
+  if (!data.ok && /session/i.test(data.error||'')){ localStorage.removeItem('sms_session'); window.top.location.href='login.html'; }
+  return data;
+}
+
+const MESSAGE_TEMPLATES = {
+  personalized: { subject: '', body: '' },
+  birthday: { subject: 'Happy Birthday! \u{1F389}', body: 'Dear {name}, wishing you a wonderful birthday from all of us at school! We hope your day is filled with joy.' },
+  meeting: { subject: 'School Meeting Invitation', body: 'Dear {name}, you are invited to a school meeting. Please see details from the school office. Your presence is important.' },
+  other: { subject: '', body: '' }
+};
+document.getElementById('msgTemplate').addEventListener('change', (e) => {
+  const t = MESSAGE_TEMPLATES[e.target.value];
+  document.getElementById('msgSubject').value = t.subject;
+  document.getElementById('msgBody').value = t.body;
+});
+
+let students = [];
+let parents = [];
+let selectedStudentIds = new Set();
+
+async function loadRecipientSource(){
+  const { payload: settingsPayload } = await window.smsSettings.getSettings();
+  document.getElementById('classFilter').innerHTML = '<option value="">All Classes</option>' +
+    (settingsPayload.classes||[]).map(c => `<option value="${c}">${c}</option>`).join('');
+
+  [students, parents] = await Promise.all([
+    window.smsSync.getRecords('student'),
+    window.smsSync.getRecords('parent')
+  ]);
+  renderStudentPickList();
+}
+
+function findParentContact(studentRecordId, student){
+  const parentRec = parents.find(p => (p.payload.linkedStudentIds||[]).includes(studentRecordId));
+  if (parentRec) return { name: parentRec.payload.fullName, email: parentRec.payload.email, phone: parentRec.payload.phone };
+  return { name: `Guardian of ${student.fullName}`, email: student.guardianEmail, phone: student.guardianPhone };
+}
+
+function renderStudentPickList(){
+  const cls = document.getElementById('classFilter').value;
+  const q = document.getElementById('studentSearch').value.trim().toLowerCase();
+  const filtered = students.filter(s => {
+    if (cls && s.payload.class !== cls) return false;
+    if (q && !String(s.payload.fullName||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById('studentPickList').innerHTML = filtered.map(s => `
+    <div class="student-pick-row">
+      <input type="checkbox" class="student-cb" value="${s.recordId}" ${selectedStudentIds.has(s.recordId)?'checked':''}>
+      <div>${s.payload.fullName} <span class="text-muted">— ${s.payload.class||''} ${s.payload.arm||''}</span></div>
+    </div>`).join('') || '<div class="small text-muted">No students match.</div>';
+  document.querySelectorAll('.student-cb').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) selectedStudentIds.add(cb.value); else selectedStudentIds.delete(cb.value);
+    updateSelCount();
+  }));
+  updateSelCount();
+}
+function updateSelCount(){ document.getElementById('selCountText').textContent = `${selectedStudentIds.size} selected`; }
+
+document.getElementById('classFilter').addEventListener('change', renderStudentPickList);
+document.getElementById('studentSearch').addEventListener('input', renderStudentPickList);
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+  document.querySelectorAll('.student-cb').forEach(cb => { cb.checked = true; selectedStudentIds.add(cb.value); });
+  updateSelCount();
+});
+document.getElementById('clearSelBtn').addEventListener('click', () => {
+  selectedStudentIds.clear();
+  document.querySelectorAll('.student-cb').forEach(cb => cb.checked = false);
+  updateSelCount();
+});
+
+document.getElementById('sendParentMsgBtn').addEventListener('click', async () => {
+  if (!selectedStudentIds.size){ alert('Select at least one recipient.'); return; }
+  const channels = [];
+  if (document.getElementById('chEmail').checked) channels.push('email');
+  if (document.getElementById('chSms').checked) channels.push('sms');
+  if (document.getElementById('chWhatsapp').checked) channels.push('whatsapp');
+  if (!channels.length){ alert('Select at least one channel.'); return; }
+  const subjectTpl = document.getElementById('msgSubject').value;
+  const bodyTpl = document.getElementById('msgBody').value;
+  if (!bodyTpl.trim()){ alert('Write a message.'); return; }
+
+  const recipients = Array.from(selectedStudentIds).map(id => {
+    const s = students.find(x => x.recordId === id).payload;
+    const contact = findParentContact(id, s);
+    return {
+      name: contact.name, email: contact.email || '', phone: contact.phone || '',
+      subject: subjectTpl.replace(/\{name\}/g, contact.name),
+      body: bodyTpl.replace(/\{name\}/g, contact.name)
+    };
+  });
+
+  document.getElementById('sendParentMsgBtn').disabled = true;
+  const resp = await apiCall({ action:'sendParentCommunication', recipients, channels, templateType: document.getElementById('msgTemplate').value });
+  document.getElementById('sendParentMsgBtn').disabled = false;
+  if (!resp.ok){ alert(resp.error); return; }
+
+  document.getElementById('sendResultBox').style.display = 'block';
+  document.getElementById('sendResultsBody').innerHTML = resp.results.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td>${Object.entries(r.channels).map(([ch, st]) => `<span class="channel-status ${st==='sent'?'cs-sent':'cs-failed'}">${ch}: ${st}</span>`).join(' ')}</td>
+    </tr>`).join('');
+});
+
+if (canMessageParents) loadRecipientSource();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

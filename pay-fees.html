@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Pay Fees — OKV School Management System</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#14213D;min-height:100vh;font-family:system-ui,sans-serif;padding:1rem;}
+  .wrap{max-width:520px;margin:0 auto;}
+  .card-panel{background:#fff;border-radius:16px;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.35);margin-bottom:1rem;}
+  h1{font-size:1.2rem;font-weight:800;color:#14213D;text-align:center;margin-bottom:1rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  .center-msg{text-align:center;padding:2rem 1rem;}
+  .center-msg i{font-size:2.2rem;color:#93672B;}
+  .ref-box{background:#F1E7D3;border:1px dashed #B8863B;border-radius:10px;padding:1rem;text-align:center;margin:1rem 0;}
+  .ref-box .ref{font-size:1.3rem;font-weight:800;color:#14213D;letter-spacing:.03em;}
+  .receipt-preview{max-width:100%;border-radius:8px;margin-top:.5rem;border:1px solid #DCD0B4;display:none;}
+  .fee-summary{background:#FAF6EC;border:1px solid #DCD0B4;border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem;}
+  .school-payment-info{background:#F1E7D3;border:1px solid #B8863B;border-radius:10px;padding:.9rem 1rem;margin-bottom:1rem;}
+  .school-payment-info .spi-title{font-weight:800;color:#14213D;font-size:.88rem;margin-bottom:.4rem;}
+  .school-payment-info .spi-row{display:flex;justify-content:space-between;font-size:.85rem;padding:.15rem 0;}
+  .fs-title{font-weight:800;color:#14213D;font-size:.85rem;margin-bottom:.5rem;}
+  .fs-table{width:100%;font-size:.82rem;border-collapse:collapse;margin-bottom:.5rem;}
+  .fs-table td{padding:.2rem 0;}
+  .fs-table td:last-child{text-align:right;font-weight:600;}
+  .fs-total-row{display:flex;justify-content:space-between;font-size:.82rem;padding:.25rem 0;border-top:1px solid #DCD0B4;}
+  .fs-balance{font-weight:800;color:#14213D;font-size:.9rem;border-top:2px solid #B8863B;padding-top:.4rem;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="publicWrap">
+  <h1><i class="bi bi-credit-card"></i> Pay School Fees</h1>
+
+  <div class="card-panel" id="formCard">
+    <div id="noOrgNote" class="small text-danger mb-2" style="display:none;">This link is missing school information. Please use the exact link your school shared.</div>
+    <form id="payForm">
+      <div class="school-payment-info" id="schoolPaymentInfo" style="display:none;">
+        <div class="spi-title">Pay to <span id="spi_school"></span></div>
+        <div class="spi-row"><span>Account Number</span><b id="spi_acct"></b></div>
+        <div class="spi-row"><span>Bank</span><b id="spi_bank"></b></div>
+        <div class="spi-row"><span>Account Name</span><b id="spi_name"></b></div>
+        <div class="small text-muted mt-1">Make your transfer to this account first, then fill in the form below and upload proof of payment.</div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label small fw-bold">Admission Number <span class="text-muted fw-normal">(CAPITAL LETTERS)</span></label>
+          <input class="form-control" id="p_admissionNo" required placeholder="e.g. OKV/2026/0142" style="text-transform:uppercase;" autocapitalize="characters" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-bold">Surname <span class="text-muted fw-normal">(CAPITAL LETTERS)</span></label>
+          <input class="form-control" id="p_fullName" required placeholder="e.g. OKONKWO" style="text-transform:uppercase;" autocapitalize="characters" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label small">Term</label>
+          <select class="form-select" id="p_term">
+            <option>First Term</option><option>Second Term</option><option>Third Term</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small">Session</label>
+          <input class="form-control" id="p_session" placeholder="e.g. 2025/2026" required>
+        </div>
+      </div>
+
+      <div class="fee-summary" id="feeSummaryBox" style="display:none;">
+        <div class="fs-title" id="feeSummaryTitle">Fee Summary</div>
+        <table class="fs-table" id="feeSummaryTable"></table>
+        <div class="fs-total-row"><span>Total Fees</span><span id="fs_total">₦0</span></div>
+        <div class="fs-total-row" id="fs_paidRow" style="display:none;"><span>Already Paid (this term)</span><span id="fs_paid">₦0</span></div>
+        <div class="fs-total-row fs-balance"><span>Balance</span><span id="fs_balance">₦0</span></div>
+      </div>
+      <div class="small text-muted mb-2" id="feeSummaryHint">Enter your admission number and surname to see the fee list and your balance. Your name and class are taken from the school's records.</div>
+
+      <div class="mb-2">
+        <label class="form-label small">Fee</label>
+        <select class="form-select" id="p_feeType" required></select>
+      </div>
+      <div class="mb-2" id="p_otherFeeNameWrap" style="display:none;">
+        <label class="form-label small">Please specify the fee</label>
+        <input class="form-control" id="p_otherFeeName" placeholder="e.g. Excursion Fee">
+      </div>
+      <div class="mb-2">
+        <label class="form-label small">Amount Paid</label>
+        <input type="number" min="1" class="form-control" id="p_amount" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small">Your Email (for payment status)</label>
+        <input type="email" class="form-control" id="p_email" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small">Upload Payment Receipt</label>
+        <input type="file" accept="image/*" class="form-control" id="p_receipt" required>
+        <img class="receipt-preview" id="receiptPreview">
+      </div>
+      <button class="btn btn-forest w-100" id="submitPayBtn">Submit Payment</button>
+      <div id="payMsg" class="small text-center mt-2"></div>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="doneWrap" style="display:none;">
+  <div class="card-panel center-msg">
+    <i class="bi bi-check-circle"></i>
+    <h2 style="font-size:1.1rem;font-weight:700;color:#14213D;margin-top:.6rem;">Payment Submitted</h2>
+    <div class="text-muted">Please save this reference — you'll need it if you contact the school about this payment.</div>
+    <div class="ref-box"><div class="ref" id="refText"></div></div>
+    <div class="small text-muted">You'll receive an email at the address you provided once the school confirms your payment.</div>
+  </div>
+</div>
+
+<script>
+/* Entry guard: send first-time visitors through the install screen first, then
+   return here. No-op once installed (standalone) or already routed through once. */
+(function(){
+  const isStandaloneNow = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  // A "direct" link (?direct=1) skips the install screen for visitors who only want to use the portal in their browser.
+  if (new URLSearchParams(window.location.search).get('direct') === '1') sessionStorage.setItem('sms_came_from_install', '1');
+  if (!isStandaloneNow && !sessionStorage.getItem('sms_came_from_install')) {
+    window.location.replace('install.html?returnTo=' + encodeURIComponent(window.location.href));
+  }
+})();
+
+const params = new URLSearchParams(window.location.search);
+const orgId = params.get('org');
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+if (!orgId) document.getElementById('noOrgNote').style.display = 'block';
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, orgId })
+  });
+  return res.json();
+}
+
+// Resizes/compresses the uploaded receipt image client-side so it fits comfortably in a Sheet cell.
+let feeTypes = [];
+let receiptDataUrl = '';
+
+async function loadOptions(){
+  const resp = await apiCall({ action:'publicGetOrgInfo' });
+  if (!resp.ok){ document.getElementById('payMsg').textContent = resp.error; return; }
+  feeTypes = resp.feeTypes || [];
+
+  if (resp.currentSession && !document.getElementById('p_session').value) document.getElementById('p_session').value = resp.currentSession;
+  if (resp.currentTerm) document.getElementById('p_term').value = resp.currentTerm;
+
+  // Custom fees the school configured, then any common fee categories not already
+  // covered, then "Others" with a free-text field — so this is never an empty dropdown.
+  const customOptions = feeTypes.map(f => `<option value="${f.feeTypeId}" data-amount="${f.amount||''}">${f.name}${f.amount?` (₦${f.amount})`:''}</option>`).join('');
+  const commonOptions = (resp.commonFeeNames||[]).map(name =>
+    name === 'Others'
+      ? `<option value="__others__">Others (specify)</option>`
+      : `<option value="__common__${name}">${name} (amount not set by school — enter what you're paying)</option>`
+  ).join('');
+  document.getElementById('p_feeType').innerHTML = customOptions + commonOptions;
+
+  const firstFee = feeTypes[0];
+  if (firstFee && firstFee.amount) document.getElementById('p_amount').value = firstFee.amount;
+
+  renderSchoolPaymentInfo(resp);
+}
+document.getElementById('p_feeType').addEventListener('change', (e)=>{
+  const opt = e.target.selectedOptions[0];
+  const isOthers = e.target.value === '__others__';
+  document.getElementById('p_otherFeeNameWrap').style.display = isOthers ? 'block' : 'none';
+  if (opt && opt.dataset.amount) document.getElementById('p_amount').value = opt.dataset.amount;
+});
+
+function renderSchoolPaymentInfo(resp){
+  const box = document.getElementById('schoolPaymentInfo');
+  if (!resp.bankAccountNumber && !resp.bankName && !resp.bankAccountName){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  document.getElementById('spi_school').textContent = resp.schoolName || 'the school';
+  document.getElementById('spi_acct').textContent = resp.bankAccountNumber || '—';
+  document.getElementById('spi_bank').textContent = resp.bankName || '—';
+  document.getElementById('spi_name').textContent = resp.bankAccountName || '—';
+}
+
+/* Fee summary — auto-refreshes as soon as enough info is entered, so the parent always
+   sees the full fee list and their running balance before submitting anything. */
+let feeSummaryTimer = null;
+function scheduleFeeSummaryRefresh(){
+  clearTimeout(feeSummaryTimer);
+  feeSummaryTimer = setTimeout(loadFeeSummary, 400);
+}
+async function loadFeeSummary(){
+  const admissionNo = document.getElementById('p_admissionNo').value.trim();
+  const surname = document.getElementById('p_fullName').value.trim();
+  const term = document.getElementById('p_term').value;
+  const session = document.getElementById('p_session').value.trim();
+  const box = document.getElementById('feeSummaryBox');
+  const hint = document.getElementById('feeSummaryHint');
+
+  if (!admissionNo || !surname){ box.style.display = 'none'; hint.textContent = 'Enter your admission number and surname to see the fee list and your balance.'; hint.style.display = 'block'; return; }
+
+  const resp = await apiCall({ action:'publicGetFeeStatus', admissionNo, surname, term, session });
+  if (!resp.ok){ box.style.display = 'none'; hint.textContent = resp.error; hint.style.display = 'block'; return; }
+  if (!resp.feeTypes.length){ box.style.display = 'none'; hint.textContent = 'The school has not set up its fee list yet.'; hint.style.display = 'block'; return; }
+
+  hint.style.display = 'none';
+  box.style.display = 'block';
+  document.getElementById('feeSummaryTitle').textContent = `Fee Summary — ${resp.studentName}${resp.className ? ' (' + resp.className + ' ' + resp.arm + ')' : ''}`;
+  document.getElementById('feeSummaryTable').innerHTML = resp.feeTypes.map(f => `<tr><td>${f.name}</td><td>₦${Number(f.amount||0).toLocaleString()}</td></tr>`).join('');
+  document.getElementById('fs_total').textContent = `₦${resp.totalDue.toLocaleString()}`;
+  if (resp.matched && term && session) {
+    document.getElementById('fs_paidRow').style.display = 'flex';
+    document.getElementById('fs_paid').textContent = `₦${resp.amountPaid.toLocaleString()}`;
+  } else {
+    document.getElementById('fs_paidRow').style.display = 'none';
+  }
+  document.getElementById('fs_balance').textContent = `₦${resp.balance.toLocaleString()}`;
+}
+['p_admissionNo','p_fullName','p_term','p_session'].forEach(id => {
+  document.getElementById(id).addEventListener('input', scheduleFeeSummaryRefresh);
+  document.getElementById(id).addEventListener('change', scheduleFeeSummaryRefresh);
+});
+
+document.getElementById('p_receipt').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if (!file) return;
+  receiptDataUrl = await resizeImageToDataUrl(file, 700, 900);
+  const img = document.getElementById('receiptPreview');
+  img.src = receiptDataUrl; img.style.display = 'block';
+});
+
+document.getElementById('payForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const msg = document.getElementById('payMsg');
+  if (!orgId) return;
+  if (!receiptDataUrl){ msg.textContent = 'Please upload your payment receipt.'; msg.className='small text-center mt-2 text-danger'; return; }
+
+  const feeTypeRaw = document.getElementById('p_feeType').value;
+  let feeTypeId = feeTypeRaw, customFeeName = '';
+  if (feeTypeRaw === '__others__') {
+    feeTypeId = '';
+    customFeeName = document.getElementById('p_otherFeeName').value.trim();
+    if (!customFeeName){ msg.textContent = 'Please specify the fee.'; msg.className='small text-center mt-2 text-danger'; return; }
+  } else if (feeTypeRaw.startsWith('__common__')) {
+    feeTypeId = '';
+    customFeeName = feeTypeRaw.replace('__common__', '');
+  }
+
+  const body = {
+    action: 'publicSubmitFeePayment',
+    admissionNo: document.getElementById('p_admissionNo').value.trim(),
+    surname: document.getElementById('p_fullName').value.trim(),
+    term: document.getElementById('p_term').value,
+    session: document.getElementById('p_session').value.trim(),
+    feeTypeId, customFeeName,
+    amountPaid: document.getElementById('p_amount').value,
+    payerEmail: document.getElementById('p_email').value.trim(),
+    receiptDataUrl
+  };
+
+  document.getElementById('submitPayBtn').disabled = true;
+  msg.textContent = 'Submitting…'; msg.className='small text-center mt-2 text-muted';
+  const resp = await apiCall(body);
+  document.getElementById('submitPayBtn').disabled = false;
+
+  if (!resp.ok){ msg.textContent = resp.error; msg.className='small text-center mt-2 text-danger'; return; }
+
+  document.getElementById('publicWrap').style.display = 'none';
+  document.getElementById('refText').textContent = resp.paymentReference;
+  document.getElementById('doneWrap').style.display = 'block';
+});
+
+/* Admission number and surname are typed in CAPITAL LETTERS. Phones that start lower-case are corrected as they type. */
+function forceCaps(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => { const s = el.selectionStart, e = el.selectionEnd; el.value = el.value.toUpperCase(); try { el.setSelectionRange(s, e); } catch (x) {} });
+}
+forceCaps('p_admissionNo'); forceCaps('p_fullName');
+loadOptions();
+</script>
+<script src="portal-nav.js"></script>
+<script>renderPortalNav('pay');</script>
+<script src="img-lib.js"></script>
+</body>
+</html>

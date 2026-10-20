@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Run Your School, Online and Offline</title>
+<meta name="description" content="OKV School Management System — the all-in-one school platform that works online and offline, on laptop, tablet, or phone. Results, CBT exams, fees, and more.">
+<meta property="og:title" content="OKV School Management System — Run Your School, Online and Offline">
+<meta property="og:description" content="The all-in-one school platform that works online and offline. Results, CBT exams, fees, and more.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://YOUR-DOMAIN-HERE.com/index.html">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  :root{ --navy:#14213D; --navy2:#1D2F55; --gold:#B8863B; --gold2:#93672B; --cream:#FAF6EC; --tan:#DCD0B4; --ink:#3d3826; --muted:#7a7259; }
+  html{scroll-behavior:smooth;}
+  body{font-family:system-ui,sans-serif;color:var(--ink);background:var(--cream);margin:0;}
+  a{text-decoration:none;}
+  section{padding:4rem 1.25rem;}
+  .container-narrow{max-width:1080px;margin:0 auto;}
+  h2.sec-title{font-size:1.7rem;font-weight:800;color:var(--navy);margin-bottom:.5rem;}
+  .sec-sub{color:var(--muted);max-width:640px;margin-bottom:2.5rem;}
+
+  /* NAV */
+  header{position:sticky;top:0;z-index:1000;background:rgba(20,33,61,.97);backdrop-filter:blur(6px);}
+  .nav-wrap{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.25rem;}
+  .brand{display:flex;align-items:center;gap:.5rem;color:#fff;font-weight:800;font-size:1.05rem;}
+  .brand .seal{width:36px;height:32px;border-radius:16px;background:radial-gradient(circle at 35% 30%, var(--gold), var(--gold2));display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:800;font-size:.68rem;letter-spacing:-.02em;}
+  nav.main-nav{display:flex;gap:1.3rem;}
+  nav.main-nav a{color:#cfd6e8;font-size:.86rem;font-weight:600;}
+  nav.main-nav a:hover{color:#fff;}
+  .btn-trial{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:800;padding:.5rem 1.1rem;border-radius:10px;}
+  .btn-trial:hover{background:var(--gold2);border-color:var(--gold2);color:#fff;}
+  .navToggle{display:none;background:none;border:none;color:#fff;font-size:1.4rem;}
+  @media (max-width:900px){
+    nav.main-nav{display:none;}
+    .navToggle{display:block;}
+    nav.main-nav.open{display:flex;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:var(--navy);padding:1rem 1.25rem;gap:.8rem;}
+  }
+
+  /* HERO */
+  .hero{background:radial-gradient(circle at 20% 0%, var(--navy2), var(--navy) 60%);color:#fff;padding:5rem 1.25rem 4rem;text-align:center;}
+  .hero h1{font-size:2.3rem;font-weight:900;max-width:780px;margin:0 auto .9rem;}
+  .hero p.lead-txt{font-size:1.05rem;color:#cfd6e8;max-width:600px;margin:0 auto 2rem;}
+  .hero-ctas{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;}
+  .btn-hero-primary{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:800;padding:.8rem 1.5rem;border-radius:12px;font-size:1rem;}
+  .btn-hero-primary:hover{background:var(--gold2);border-color:var(--gold2);color:#fff;}
+  .btn-hero-secondary{background:transparent;border:2px solid #fff;color:#fff;font-weight:700;padding:.75rem 1.4rem;border-radius:12px;font-size:1rem;}
+  .btn-hero-secondary:hover{background:#fff;color:var(--navy);}
+  .hero-note{margin-top:1.2rem;font-size:.82rem;color:#a9b4d0;}
+
+  /* FEATURE / INFO CARDS */
+  .card-tile{background:#fff;border:1px solid var(--tan);border-radius:14px;padding:1.4rem;height:100%;}
+  .card-tile .icon{width:46px;height:46px;border-radius:12px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:.8rem;}
+  .card-tile h3{font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;}
+  .card-tile p{font-size:.86rem;color:var(--muted);margin:0;}
+
+  .alt-bg{background:#fff;}
+
+  /* HOW IT WORKS */
+  .how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem;}
+
+  /* WHY CHOOSE */
+  .why-row{display:flex;gap:1rem;align-items:flex-start;margin-bottom:1.4rem;}
+  .why-row .chk{width:34px;height:34px;border-radius:50%;background:#DFF3E4;color:#1E6B3A;display:flex;align-items:center;justify-content:center;flex:none;font-size:1.1rem;}
+
+  /* GUARANTEE BADGE */
+  .guarantee-badge{display:inline-flex;align-items:center;gap:.6rem;background:#FCF3DA;border:1px solid #E8D27A;color:#8A6A12;font-weight:700;padding:.6rem 1.1rem;border-radius:40px;font-size:.85rem;}
+
+  /* CTA BAND */
+  .cta-band{background:var(--navy);color:#fff;text-align:center;border-radius:20px;padding:3rem 1.5rem;margin:0 auto;max-width:1080px;}
+  .cta-band h2{color:#fff;}
+
+  /* FAQ */
+  .accordion-button{font-weight:700;color:var(--navy);}
+  .accordion-button:not(.collapsed){background:#F1E7D3;color:var(--navy);}
+
+  /* FOOTER */
+  footer{background:var(--navy);color:#cfd6e8;padding:3rem 1.25rem 1.5rem;}
+  footer .f-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:2rem;max-width:1080px;margin:0 auto 2rem;}
+  footer h4{color:#fff;font-size:.9rem;font-weight:700;margin-bottom:.7rem;}
+  footer a{color:#a9b4d0;display:block;font-size:.84rem;margin-bottom:.5rem;}
+  footer a:hover{color:#fff;}
+  .footer-bottom{text-align:center;font-size:.78rem;color:#8592b0;border-top:1px solid #2a3a63;padding-top:1.2rem;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-wrap">
+    <a href="#top" class="brand"><span class="seal">OKV</span> OKV School Management System</a>
+    <nav class="main-nav" id="mainNav">
+      <a href="#about">About</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#features">Features</a>
+      <a href="#why-us">Why Us</a>
+      <a href="#faq">FAQ</a>
+      <a href="demo.html">Live Demo</a>
+    </nav>
+    <div class="d-flex align-items-center gap-2">
+      <a href="pricing.html" class="btn-trial d-none d-sm-inline-block">Start 7-Day Free Trial</a>
+      <button class="navToggle" id="navToggle"><i class="bi bi-list"></i></button>
+    </div>
+  </div>
+</header>
+
+<div id="top"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <h1>Run your entire school — results, exams, fees, and more — from one system that never stops working.</h1>
+  <p class="lead-txt">OKV School Management System keeps working even without internet, then syncs the moment you're back online. Built for schools of every size, on any device.</p>
+  <div class="hero-ctas">
+    <a href="pricing.html" class="btn-hero-primary"><i class="bi bi-rocket-takeoff"></i> Start 7-Day Free Trial</a>
+    <a href="demo.html" class="btn-hero-secondary"><i class="bi bi-play-circle"></i> View Live Demo</a>
+  </div>
+  <div class="hero-note">No card required to start your trial · 30-day money-back guarantee on every paid plan</div>
+</section>
+
+<!-- ABOUT -->
+<section id="about" class="alt-bg">
+  <div class="container-narrow">
+    <h2 class="sec-title">About the System</h2>
+    <p class="sec-sub">OKV School Management System is a complete, multi-tenant platform built for schools — from nursery through secondary. One login for Admins, Principals, Teachers, Bursars, and Exam Officers; one shareable link for students and parents to check results, sit CBT exams, and pay fees. Every school's data is fully isolated — your records are never visible to another school on the platform.</p>
+    <div class="row g-3">
+      <div class="col-md-4"><div class="card-tile"><div class="icon"><i class="bi bi-mortarboard"></i></div><h3>Built for real school workflows</h3><p>Results with auto-generated remarks, ID cards, exam clearance, timetables — modeled on how schools actually run, not a generic spreadsheet.</p></div></div>
+      <div class="col-md-4"><div class="card-tile"><div class="icon"><i class="bi bi-shield-lock"></i></div><h3>Your data, isolated and safe</h3><p>Every school operates in its own private space. Role-based access means staff only ever see what their role permits.</p></div></div>
+      <div class="col-md-4"><div class="card-tile"><div class="icon"><i class="bi bi-arrow-repeat"></i></div><h3>Always up to date</h3><p>Changes sync automatically across every device in your school, with a manual sync option whenever you want to be sure.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="container-narrow">
+    <h2 class="sec-title">How It Works — Offline &amp; Online, on Any Device</h2>
+    <p class="sec-sub">Install it once, and it behaves like a native app — because it is one, without needing an app store.</p>
+    <div class="how-grid">
+      <div class="card-tile">
+        <div class="icon"><i class="bi bi-wifi-off"></i></div>
+        <h3>Works without internet</h3>
+        <p>Once installed, staff can keep entering scores, attendance, and records with no connection. Everything queues locally and uploads automatically the moment you're back online — nothing is lost.</p>
+      </div>
+      <div class="card-tile">
+        <div class="icon"><i class="bi bi-cloud-check"></i></div>
+        <h3>Syncs the moment you're online</h3>
+        <p>Reconnect and your device quietly syncs in the background — on a timer, when you switch back to the tab, or with one tap on "Sync Now."</p>
+      </div>
+      <div class="card-tile">
+        <div class="icon"><i class="bi bi-laptop"></i></div>
+        <h3>Laptop</h3>
+        <p>The full admin experience — Settings, Staff, Finance, Reports — is easiest on a bigger screen, but never required.</p>
+      </div>
+      <div class="card-tile">
+        <div class="icon"><i class="bi bi-tablet"></i></div>
+        <h3>Tablet</h3>
+        <p>Teachers can walk the classroom entering scores or taking attendance directly from a tablet.</p>
+      </div>
+      <div class="card-tile">
+        <div class="icon"><i class="bi bi-phone"></i></div>
+        <h3>Mobile</h3>
+        <p>Every page is responsive down to a phone screen — including result sheets and ID cards, which render identically to their printed/PDF version.</p>
+      </div>
+      <div class="card-tile">
+        <div class="icon"><i class="bi bi-download"></i></div>
+        <h3>Install like a native app</h3>
+        <p>Add it to your Home Screen on iOS, Android, or desktop — with clear, on-screen instructions for whichever device you're on.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="alt-bg">
+  <div class="container-narrow">
+    <h2 class="sec-title">Everything a Modern School Needs, in One Place</h2>
+    <p class="sec-sub">Every feature below is live in the product today — not on a roadmap.</p>
+    <div class="row g-3">
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-people"></i></div><h3>Student, Staff &amp; Parent Management</h3><p>Full records with photo uploads, CSV import/export, and clear format instructions on every screen.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-diagram-2"></i></div><h3>Class &amp; Subject Assignment</h3><p>Assign teachers to classes, arms, and subjects — it drives their dashboard and what they can enter.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-file-earmark-text"></i></div><h3>Results with Auto Remarks</h3><p>Grades, remarks, and overall comments generate automatically from scores — the principal's signature appears wherever it's needed, automatically.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-laptop"></i></div><h3>CBT Tests &amp; Exams</h3><p>Teachers build tests with a full question builder; students sit them on a locked-down, auto-submitting exam screen.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-person-vcard"></i></div><h3>ID Card Generator</h3><p>Print-ready student and staff ID cards, generated in bulk from records you already have.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-calendar3"></i></div><h3>Timetable</h3><p>Build the weekly timetable once — it shows automatically on every teacher's own dashboard.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-megaphone"></i></div><h3>Announcements</h3><p>Target announcements to everyone or specific roles — Teachers, Bursars, whoever needs them.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-credit-card"></i></div><h3>Fee Payments</h3><p>Parents submit payment with a receipt photo from one shared link; Bursars confirm, and clearance status updates automatically everywhere.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-graph-up"></i></div><h3>Full Financial Management</h3><p>Expenses, other income, project budgets, and a live cash-flow report — no manual totaling.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-clipboard-check"></i></div><h3>Test/Exam Clearance</h3><p>Generate a printable list of exactly which students are cleared to sit an exam, per class.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-link-45deg"></i></div><h3>One Public Portal Link</h3><p>Students and parents check results with a school-issued passcode, download the signed PDF, sit CBT tests, do assignments and pay fees, all from a single link your school shares.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-shield-check"></i></div><h3>Role-Based Access</h3><p>Seven built-in roles, freely combined per staff member — from Super Administrator down to Result Viewer.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-bar-chart-line"></i></div><h3>Dashboards with Live Charts</h3><p>Every role gets its own dashboard with live numbers and charts: fees, scores, attendance and enrolment. School owners get a platform-wide view too.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-mortarboard"></i></div><h3>KG to SS3</h3><p>Kindergarten, Nursery, Primary and Secondary sections, each with its own subjects, CA count and report layout.</p></div></div>
+      <div class="col-md-4 col-sm-6"><div class="card-tile"><div class="icon"><i class="bi bi-file-earmark-pdf"></i></div><h3>Branded A4 Printouts &amp; Signed PDF</h3><p>Your logo and colours on result sheets, receipts, ID cards and lists. Parents download the exact signed result as a PDF.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND 1 -->
+<section>
+  <div class="cta-band">
+    <h2 class="sec-title">See it before you commit.</h2>
+    <p style="color:#cfd6e8;max-width:520px;margin:0 auto 1.5rem;">Explore a live demo with sample data — no sign-up required — or jump straight into your own 7-day free trial.</p>
+    <div class="hero-ctas">
+      <a href="demo.html" class="btn-hero-secondary"><i class="bi bi-play-circle"></i> View Live Demo</a>
+      <a href="pricing.html" class="btn-hero-primary"><i class="bi bi-rocket-takeoff"></i> Start 7-Day Free Trial</a>
+    </div>
+  </div>
+</section>
+
+<!-- CROSS-PLATFORM -->
+<section class="alt-bg">
+  <div class="container-narrow">
+    <h2 class="sec-title">Cross-Platform Accessibility</h2>
+    <p class="sec-sub">One account, every device, no separate app downloads to manage.</p>
+    <div class="row g-3">
+      <div class="col-md-6"><div class="card-tile"><h3><i class="bi bi-windows"></i> Windows &amp; Mac laptops</h3><p>Works in any modern browser — Chrome, Edge, Safari, Firefox — with the same full feature set.</p></div></div>
+      <div class="col-md-6"><div class="card-tile"><h3><i class="bi bi-apple"></i> iOS &amp; <i class="bi bi-android2"></i> Android</h3><p>Add to Home Screen for an app-like experience on phones and tablets, with clear step-by-step install instructions for each.</p></div></div>
+      <div class="col-md-6"><div class="card-tile"><h3><i class="bi bi-cloud"></i> No installs required to try it</h3><p>Browse the live demo or check a result from any browser — installing is only needed for the full staff experience.</p></div></div>
+      <div class="col-md-6"><div class="card-tile"><h3><i class="bi bi-arrow-left-right"></i> Same data, every screen</h3><p>Start on a laptop in the office, finish on a phone in the classroom — it's the same account, always in sync.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY CHOOSE -->
+<section id="why-us">
+  <div class="container-narrow">
+    <h2 class="sec-title">Why Choose OKV School Management System</h2>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="why-row"><div class="chk"><i class="bi bi-check-lg"></i></div><div><strong>Actually works offline</strong><p class="text-muted small mb-0">Most school platforms simply stop when the internet does. This one doesn't.</p></div></div>
+        <div class="why-row"><div class="chk"><i class="bi bi-check-lg"></i></div><div><strong>Built for the whole school, not just one office</strong><p class="text-muted small mb-0">Admins, Principals, Teachers, Bursars, and parents each get exactly what they need — no more, no less.</p></div></div>
+        <div class="why-row"><div class="chk"><i class="bi bi-check-lg"></i></div><div><strong>No hidden setup cost</strong><p class="text-muted small mb-0">Start your 7-day trial with full access — no card required, cancel anytime.</p></div></div>
+      </div>
+      <div class="col-md-6">
+        <div class="why-row"><div class="chk"><i class="bi bi-check-lg"></i></div><div><strong>Everything auto-calculates</strong><p class="text-muted small mb-0">Grades, remarks, clearance status, cash flow — computed live, never manually tallied.</p></div></div>
+        <div class="why-row"><div class="chk"><i class="bi bi-check-lg"></i></div><div><strong>One link for parents and students</strong><p class="text-muted small mb-0">Results, CBT exams, and fee payment — no separate apps or portals to explain.</p></div></div>
+        <div class="why-row"><div class="chk"><i class="bi bi-check-lg"></i></div><div><strong>Backed by a 30-day money-back guarantee</strong><p class="text-muted small mb-0">Try it properly. If it's not right for your school, get a full refund within 30 days.</p></div></div>
+      </div>
+    </div>
+    <div class="text-center mt-3">
+      <span class="guarantee-badge"><i class="bi bi-patch-check-fill"></i> 30-Day Money-Back Guarantee on every paid plan</span>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="alt-bg">
+  <div class="container-narrow">
+    <h2 class="sec-title">Frequently Asked Questions</h2>
+    <div class="accordion" id="faqAccordion">
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq1">Does it really work without internet?</button></h2>
+        <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Yes. Once installed, staff can keep entering data with no connection at all. Everything is saved on the device and syncs automatically — on a timer, when you switch back to the app, or the moment you reconnect. A manual "Sync Now" button is always available too.</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq2">What devices does it run on?</button></h2>
+        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Any modern browser on Windows, Mac, iOS, or Android — laptop, tablet, or phone. Install it to your Home Screen for an app-like experience, or use it straight in the browser.</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq3">Can I try it before paying?</button></h2>
+        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Yes — every plan starts with a 7-day free trial, no card required. You can also browse the Live Demo with sample data any time, no sign-up needed.</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq4">Is our school's data visible to other schools?</button></h2>
+        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">No. Every school's account is fully isolated from every other — there's no way for one school's records, results, or finances to be seen by another.</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq5">How do parents and students check results or pay fees?</button></h2>
+        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Your school shares one link. From there, students/parents choose to check a result, take a CBT test, or pay fees — no account or login required. Results open with the passcode the school issues; assignments, tests and fee payments use their admission number and surname.</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq6">What happens after my 7-day trial ends?</button></h2>
+        <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">You'll see a countdown on your dashboard the whole time, with a one-tap Upgrade option. If you upgrade, nothing changes — your data carries over exactly as it was.</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faq7">What's the money-back guarantee?</button></h2>
+        <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion"><div class="accordion-body">Every paid plan is covered by a 30-day money-back guarantee — if it's not the right fit for your school, contact us within 30 days of upgrading for a full refund.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section>
+  <div class="cta-band">
+    <h2 class="sec-title">Ready to run your school on one system?</h2>
+    <p style="color:#cfd6e8;max-width:520px;margin:0 auto 1.5rem;">Start your 7-day free trial today — no card required.</p>
+    <a href="pricing.html" class="btn-hero-primary"><i class="bi bi-rocket-takeoff"></i> Start 7-Day Free Trial</a>
+  </div>
+</section>
+
+<footer>
+  <div class="f-cols">
+    <div>
+      <h4>OKV School Management System</h4>
+      <p style="font-size:.82rem;color:#a9b4d0;">The all-in-one school platform that works online and offline, on any device.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="demo.html">Live Demo</a>
+    </div>
+    <div>
+      <h4>Company</h4>
+      <a href="#about">About</a>
+      <a href="#why-us">Why Choose Us</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div>
+      <h4>Get Started</h4>
+      <a href="pricing.html">Start Free Trial</a>
+      <a href="login.html">Staff Login</a>
+      <a href="portal.html">Student/Parent Portal</a>
+    </div>
+    <div>
+      <h4>Contact Us</h4>
+      <a href="mailto:technologyokv@gmail.com">technologyokv@gmail.com</a>
+      <a href="tel:+2348104141138">+234 810 414 1138</a>
+      <a href="https://www.okvtechnology.com" target="_blank">www.okvtechnology.com</a>
+    </div>
+  </div>
+  <div class="footer-bottom">&copy; <span id="yr"></span> OKV School Management System, a product of OKV Technology. All rights reserved. 30-day money-back guarantee on all paid plans.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+document.getElementById('yr').textContent = new Date().getFullYear();
+document.getElementById('navToggle').addEventListener('click', () => {
+  document.getElementById('mainNav').classList.toggle('open');
+});
+document.querySelectorAll('nav.main-nav a[href^="#"]').forEach(a => {
+  a.addEventListener('click', () => document.getElementById('mainNav').classList.remove('open'));
+});
+</script>
+<script src="branding-lib.js"></script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — User Manual</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.5rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .role-banner{color:#8A6A12;background:#FCF3DA;border:1px solid #E8D27A;border-radius:8px;padding:.6rem .9rem;font-size:.86rem;font-weight:700;margin-bottom:1rem;}
+  .quick{border:1px solid #DCD0B4;border-left:5px solid #B8863B;border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.1rem;background:#FFFDF8;}
+  .quick h2{font-size:1rem;font-weight:800;color:#14213D;margin:0 0 .5rem;}
+  .quick ol{margin:0;padding-left:1.2rem;} .quick li{font-size:.88rem;color:#3d3826;margin-bottom:.25rem;}
+  .toc{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:1.2rem;}
+  .toc a{font-size:.74rem;background:#F1E7D3;color:#93672B;font-weight:700;border-radius:14px;padding:.25rem .65rem;text-decoration:none;}
+  .manual-section{margin-bottom:1.6rem;break-inside:avoid-page;}
+  .manual-section h2{font-size:1.05rem;font-weight:800;color:#14213D;border-bottom:2px solid #F1E7D3;padding-bottom:.4rem;margin-bottom:.6rem;}
+  .manual-section h2 i{color:#B8863B;margin-right:.4rem;}
+  .manual-section p, .manual-section li{font-size:.88rem;color:#3d3826;}
+  .manual-section ol, .manual-section ul{padding-left:1.2rem;}
+  .manual-section .who{font-size:.72rem;color:#7a7259;margin:-.3rem 0 .5rem;}
+  .tip{background:#E4F0FB;border-left:4px solid #1D2F55;border-radius:6px;padding:.5rem .8rem;font-size:.84rem;margin:.6rem 0;}
+  .warn{background:#FBE4E4;border-left:4px solid #8B1E3F;border-radius:6px;padding:.5rem .8rem;font-size:.84rem;margin:.6rem 0;}
+  .premium-lock{background:#FCF3DA;border:1px solid #E8D27A;border-radius:10px;padding:.8rem 1rem;font-size:.85rem;color:#8A6A12;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  table.mini{font-size:.82rem;width:100%;border-collapse:collapse;margin:.4rem 0;} table.mini th,table.mini td{border:1px solid #DCD0B4;padding:.3rem .5rem;vertical-align:top;} table.mini th{background:#F1E7D3;color:#5b5442;}
+  @media print {
+    @page{size:A4 portrait;margin:10mm;}
+    #offlineBanner, .topline, .no-print, .toc { display:none !important; }
+    body{background:#fff;padding:0;}
+    .card-panel{box-shadow:none;border:none;padding:0;}
+    .quick,.manual-section{break-inside:avoid;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — showing the last-loaded manual; it works offline too.</div>
+
+<div class="wrap">
+  <div class="topline no-print">
+    <h1>User Manual</h1>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+      <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <button class="btn btn-sm btn-forest" id="downloadBtn" style="background:#14213D;border-color:#14213D;color:#fff;"><i class="bi bi-printer"></i> Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="role-banner" id="roleBanner"></div>
+    <div id="quickStarts"></div>
+    <div class="toc no-print" id="toc"></div>
+    <div id="manualBody"></div>
+  </div>
+</div>
+
+<script src="settings-lib.js"></script>
+<script src="print-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session){ window.top.location.href = 'login.html'; }
+const roles = (session && session.roles) || [];
+const isPremium = session && session.plan === 'premium';
+
+/* ---- role groups (short keys) ---- */
+const ROLE_KEY = {
+  'Super Administrator':'admin', 'School Administrator':'admin',
+  'Principal / Head Teacher':'principal', 'Academic Officer / Exam Officer':'exam',
+  'Teacher':'teacher', 'Bursar / Accountant':'bursar', 'Result Viewer / Parent Portal User':'viewer'
+};
+const myKeys = Array.from(new Set(roles.map(r => ROLE_KEY[r]).filter(Boolean)));
+const can = (aud) => aud === 'all' || aud.some(k => myKeys.includes(k));
+
+/* ---- a quick start for EACH role the person holds ---- */
+const QUICK = {
+  admin: ['Settings first: add your school name, logo, colours, classes (including KG, Nursery, Primary, Secondary), subjects and the current term and session.',
+          'Users &amp; Roles: create a login for every staff member and tick the roles they need.',
+          'Add or import your Students (each with their own unique admission number), then Parents and Staff.',
+          'Assignment: name a form teacher for each class and a teacher for each subject.',
+          'Fee Payments: add your fee types, then share the Portal link with parents (Home tab).',
+          'Every term end: download a Backup, set the new term and session, and promote students.'],
+  principal: ['Open Results to review each class and sign off report sheets; Download PDF gives the exact signed sheet.',
+              'Reports shows fee collection, enrolment and academic activity at a glance.',
+              'Post Announcements and message parents from Parent Comms.',
+              'Keep your name and signature up to date in Settings: they print on every result and receipt.',
+              'Finance (if on Premium) is view-only for you: income, expenses, projects and cash flow.'],
+  exam: ['Keep Assignment (form and subject teachers) and the Timetable up to date.',
+         'Check that teachers have entered every CA and exam score in Scores, then review sheets in Results.',
+         'Fill each pupil\'s attendance and behaviour ratings in Results before printing.',
+         'Print passcodes (a list, or cut-out slips) for the class once its fees are cleared.',
+         'Promote or repeat students at session end; print the Admission List for any class.'],
+  teacher: ['Home shows your classes and today\'s timetable.',
+            'Scores: pick your class and subject, type each CA and exam score; the grade appears as you type.',
+            'Attendance: if you are a form teacher, mark your class every day.',
+            'CBT Tests and Assignments: create tests and coursework for your subjects.',
+            'Admission List: print your class list of admission numbers and names; Parent Comms to message parents.'],
+  bursar: ['Fee Payments: review each pending payment, enter the amount actually received, then Confirm or Reject.',
+           'Print a Receipt for any confirmed payment.',
+           'Clearance: check who has paid; "Generate Clearance List" gives the exam-clearance printout.',
+           'Send the Fee List to parents by class; Admission List helps you match payers to students.',
+           'Finance (Premium): record expenses, other income and project budgets, then read the Cash Flow report.'],
+  viewer: ['Open the school\'s Portal link (Direct link) on your device.',
+           'Choose Check Result, then select the session, term and class and type the student\'s passcode.',
+           'If the result is blocked, the page explains why (fees not cleared). Send the parent to the bursar.',
+           'Use Download PDF to give or send the exact signed result.']
+};
+const ROLE_TITLE = { admin:'Administrator', principal:'Principal / Head Teacher', exam:'Academic / Exam Officer', teacher:'Teacher', bursar:'Bursar / Accountant', viewer:'Result Viewer (front desk)' };
+
+/* ---- the manual: every tab and workflow, each with its audience ---- */
+const A_ALL = 'all', A_ADMIN = ['admin'], A_STAFFISH = ['admin','principal','exam'], A_TEACHING = ['admin','principal','exam','teacher'];
+const SECTIONS = [
+ { id:'start', icon:'bi-play-circle', title:'Getting started', aud:A_ALL, body:`
+  <ol><li>Install the app from the install page your school shared (it works like any app and keeps working offline), then log in with the username and password your administrator gave you.</li>
+  <li>The <b>left sidebar</b> lists every tab you may use (on a phone tap the menu button). You only see tabs your role allows.</li>
+  <li>Most data entry works <b>offline</b>: changes save on your device and sync automatically when the internet returns. Only syncing sends what changed, so it stays quick. Use <b>Sync Now</b> on Home if you want it straight away.</li>
+  <li>A few actions need internet at that moment: saving attendance, confirming payments, sending messages, changing your password, backups and printing passcodes.</li>
+  <li>Forgot your password? Use <b>Forgot password</b> on the login page, or ask your administrator to set a new one.</li></ol>` },
+ { id:'home', icon:'bi-house-door', title:'Home', aud:A_ALL, body:`<p>Your landing page: subscription status (administrators), key numbers for your role, alerts (such as payments awaiting review), announcements, the portal links, sync status and Change Password. Red numbers on Fee Payments and Messages show what needs attention.</p>` },
+ { id:'users', icon:'bi-people', title:'Users &amp; Roles', aud:A_ADMIN, who:'Administrators', body:`
+  <ol><li>Tap <b>New User</b>, enter name, username, email and a first password (at least 6 characters).</li><li>Tick one or more roles. A person can hold several (for example Teacher and Bursar) and sees the tabs of all of them.</li>
+  <li><b>Suspend</b> locks someone out without deleting them; <b>Set Password</b> gives a new password; <b>Import CSV</b> adds many people at once.</li></ol>
+  <div class="tip">A teacher must hold the <b>Teacher</b> role before they appear in teacher lists (Assignment, Timetable, CBT).</div>` },
+ { id:'backup', icon:'bi-cloud-arrow-down', title:'Backup &amp; archive', aud:A_ADMIN, who:'Administrators', body:`
+  <p>Download a full copy of your school data (JSON or CSV) at the end of every term and before big changes. The <b>Archived Records</b> panel shows what the system has moved to your private archive to stay fast (scores and term details after two years, never the current session; assignments and CBT after about six months; attendance after about four months). Nothing is deleted, and <b>Restore</b> brings any record type back.</p>` },
+ { id:'settings', icon:'bi-gear', title:'Settings', aud:['admin','principal'], who:'Administrators and Principal', body:`
+  <ul><li><b>School info:</b> name, address, phone, email, motto and logo.</li>
+  <li><b>Branding &amp; Printouts:</b> choose a colour theme or your own colours, a second logo, website, registration number, footer note and watermark. Your logo prints at the <b>top-left</b> of every printout.</li>
+  <li><b>Classes &amp; Arms:</b> add each class, choose its <b>section</b> (<b>Kindergarten (KG)</b>, Nursery, Primary or Secondary) and its arms. One-tap buttons add KG1 to KG3, Nursery 1 to 3, Primary 1 to 6, JSS1 to 3 and SS1 to 3.</li>
+  <li><b>Subjects:</b> each section has its own subject list. Use the section tabs, add subjects, or tap <b>Add suggested subjects</b> (KG example: Number Work, Letter Work, Phonics, Rhymes and Songs, Colouring and Drawing, Health Habits).</li>
+  <li><b>CA count</b> (2, 3 or 4) for each section; <b>current term and session</b>; principal name and signature; closing and resumption dates; school bank account for the payment page.</li></ul>
+  <div class="tip">Change the term and session at the start of each term. Scores, fees and attendance all follow them.</div>` },
+ { id:'students', icon:'bi-mortarboard', title:'Students', aud:['admin','principal','exam','teacher','bursar'], who:'Edit: Administrators, Principal, Exam Officer. Others view.', body:`
+  <ol><li>Tap <b>+ New Student</b>: full name (start with the <b>SURNAME</b>), admission number, class, arm, gender, guardian phone and email, photo.</li>
+  <li>The <b>admission number</b> is saved in CAPITAL LETTERS and is <b>unique for life</b>: no two students can share one, it never changes when a student is promoted or repeats, and it stays reserved when a student leaves. Tap <b>Next free no.</b> for the next unused number.</li>
+  <li><b>Import CSV</b> from the template: repeated or already-used numbers are skipped and listed. <b>Export CSV</b> and <b>Print admission list</b> are on the same page.</li></ol>
+  <div class="warn">If the page shows a red notice that some admission numbers are shared, edit one student in each group so every child has their own number.</div>` },
+ { id:'admission', icon:'bi-list-ol', title:'Admission List', aud:['admin','principal','exam','teacher','bursar'], who:'Administrators, Principal, Exam Officer, Teacher (own classes), Bursar', body:`
+  <p>Prints every student's admission number with their name on A4 with your letterhead. Choose a class and arm (or all classes), sort by name or number, show names in capitals, include inactive students, and start a new page for each class. <b>Export CSV</b> is also there. Teachers see the classes they teach.</p>` },
+ { id:'promote', icon:'bi-arrow-repeat', title:'Promote / Repeat', aud:A_STAFFISH, who:'Administrators, Principal, Exam Officer', body:`
+  <ol><li>Choose the class and arm to move from and tap Load Students; tick who moves.</li><li>Choose the destination class and arm. A different class is a <b>Promote</b>; the same class is a <b>Repeat</b>. Every move is logged in History.</li></ol>
+  <p>The student stays the <b>same record with the same admission number</b>; only the class changes. Back up first.</p>` },
+ { id:'staff', icon:'bi-person-badge', title:'Staff', aud:['admin','principal','exam','bursar'], who:'Edit: Administrators, Principal', body:`<p>Staff records with photo, staff ID, position, phone, email and hire date (used for staff ID cards). A staff record is not a login: create the login in Users &amp; Roles.</p>` },
+ { id:'parents', icon:'bi-people-fill', title:'Parents', aud:A_STAFFISH, body:`<p>Add each parent or guardian and link them to their children. Messages and attendance emails then reach the right person, and one parent with several children gets one combined email.</p>` },
+ { id:'assignment', icon:'bi-diagram-2', title:'Assignment (form and subject teachers)', aud:A_TEACHING, who:'Set: Administrators, Principal, Exam Officer. Teachers view.', body:`<p>Name one <b>form teacher</b> per class and arm, and a <b>subject teacher</b> for each subject in each class. Teachers then see only their own classes in Scores, Attendance, CBT and Assignments. Subjects offered depend on the class's section (KG, Nursery, Primary, Secondary).</p>` },
+ { id:'scores', icon:'bi-pencil-square', title:'Scores', aud:A_TEACHING, body:`
+  <ol><li>Choose your class, arm and subject.</li><li>Type each pupil's CA scores and exam score. Total, grade and remark appear as you type. Kindergarten and Nursery sheets use their own subject lists and CA counts.</li><li>Tap <b>Save Scores</b>.</li></ol>
+  <table class="mini"><tr><th>Total</th><th>Grade</th><th>Remark</th></tr><tr><td>70-100</td><td>A</td><td>Excellent</td></tr><tr><td>60-69</td><td>B</td><td>Very Good</td></tr><tr><td>50-59</td><td>C</td><td>Good</td></tr><tr><td>45-49</td><td>D</td><td>Fair</td></tr><tr><td>40-44</td><td>E</td><td>Poor</td></tr><tr><td>0-39</td><td>F</td><td>Fail</td></tr></table><p>If your school uses the WAEC scale (Settings → Grading Method), grades show as A1 (75–100), B2 (70–74), B3 (65–69), C4 (60–64), C5 (55–59), C6 (50–54), D7 (45–49), E8 (40–44) and F9 (0–39).</p>` },
+ { id:'attendance', icon:'bi-calendar-check', title:'Attendance', aud:A_TEACHING, body:`<p>Pick the class and date, tap <b>Mark All Present</b>, then change the absent or late pupils and <b>Save Attendance</b> (needs internet). Reopening a day lets you correct it; totals adjust without double counting and feed the report sheets.</p>` },
+ { id:'cbt', icon:'bi-laptop', title:'CBT Tests', aud:A_TEACHING, body:`
+  <p>Create a timed multiple-choice test: class, subject, topic, instructions, minutes, start and stop time and the questions. Students take it on the portal with their <b>admission number and surname (in capitals)</b>. It is marked automatically. Leaving the page or full screen submits it; use <b>Reset</b> on a submission to allow a retake.</p>` },
+ { id:'coursework', icon:'bi-journal-text', title:'Assignments (coursework)', aud:A_TEACHING, body:`<p>Set coursework with instructions, a due date and an optional photo. Students open it on the portal (admission number and surname in capitals), type a response and submit once. Open <b>View</b> to read submissions.</p>` },
+ { id:'results', icon:'bi-file-earmark-text', title:'Results, signed PDF and passcodes', aud:A_TEACHING, body:`
+  <ol><li>Choose class, arm, term and session; open a pupil to see the report sheet. Above a term sheet enter attendance and the ten behaviour ratings.</li>
+  <li>The sheet is <b>A4 portrait on one page</b>: your logo top-left, the pupil's photo top-right, your colours, the class teacher's name and the principal's signature.</li>
+  <li><b>Download PDF</b> saves the exact sheet as a PDF in one tap. <b>Print</b> opens the print window instead.</li>
+  <li><b>Print Passcodes</b> gives an A4 list for the exam office; <b>Print Cut-out Slips</b> gives one slip per pupil. Each pupil's <b>8-digit passcode</b> is unique and is the only thing they need, with the session, term and class, to see their result on the portal.</li></ol>
+  <div class="tip">A pupil sees a result only when their fees are cleared in Clearance.</div>` },
+ { id:'clearance', icon:'bi-cash-coin', title:'Clearance', aud:['admin','principal','exam','teacher','bursar'], who:'Enter: Administrators, Bursar', body:`<p>Enter Amount Due and Amount Paid per pupil; the status flips between <b>Cleared</b> and <b>Owing</b>. Confirmed fee payments add to Amount Paid automatically. <b>Generate Clearance List</b> prints the cleared pupils with bursar and principal signature lines.</p>` },
+ { id:'fees', icon:'bi-receipt', title:'Fee Payments &amp; receipts', aud:['admin','bursar'], who:'Administrators and Bursar', body:`
+  <ol><li>Add <b>fee types</b> (name and standard amount).</li><li>Parents submit a payment on the portal with their <b>admission number and surname (in capitals)</b> and a receipt photo; you get a reference number, a badge and an alert.</li>
+  <li>Tap <b>Review</b>, check the receipt, enter the amount <b>actually received</b>, then <b>Confirm</b> or <b>Reject</b>. The payer is emailed automatically.</li>
+  <li>Tap <b>Receipt</b> on a confirmed payment for an official A4 receipt with the amount in words and signature lines.</li></ol>
+  <p>Processed payments cannot be edited, so the audit trail stays honest. <b>Send Fee List to Parents</b> emails each parent their child's balance.</p>` },
+ { id:'finance', icon:'bi-graph-up', title:'Finance', aud:['admin','principal','bursar'], premium:true, who:'Administrators and Bursar edit; Principal views', body:`<p>Record expenses, other income (donations, grants) and projects with budgets, then read the live <b>Cash Flow report</b> (income, expenses, net, month by month and by category). Confirmed fee payments are counted automatically; do not enter them twice. Print gives a branded A4 copy.</p>` },
+ { id:'reports', icon:'bi-bar-chart-line', title:'Reports', aud:A_ALL, body:`<p>Choose Fee Collection, Enrolment, Academic Activity or My Activity, pick Daily, Weekly, Quarterly or Yearly, then Print or export CSV.</p>` },
+ { id:'idcards', icon:'bi-person-vcard', title:'ID Cards', aud:A_STAFFISH, premium:true, body:`<p>Choose Students or Staff, filter by class, tick people and <b>Generate and Print</b>. Cards show your logo, colours, the photo, number, class or position, session and the principal's signature, eight per A4 page.</p>` },
+ { id:'timetable', icon:'bi-calendar3', title:'Timetable', aud:A_ALL, who:'Edit: Administrators, Principal, Exam Officer', body:`<p>A Monday to Friday grid with periods 1 to 8, by class or by teacher. Teachers see today's periods on Home. Tap <b>Print timetable</b> for a branded A4 copy.</p>` },
+ { id:'announcements', icon:'bi-megaphone', title:'Announcements', aud:A_ALL, who:'Post: Administrators, Principal, Exam Officer', body:`<p>Post a notice to everyone or to chosen roles. It shows on each person's Home and in the full list.</p>` },
+ { id:'comms', icon:'bi-chat-dots', title:'Parent Comms', aud:A_TEACHING, body:`<p>Choose students (by class or search), pick a template (Individual, Birthday, School Meeting, Other; <b>{name}</b> becomes the student's name) and send by email. SMS and WhatsApp send only after the platform owner connects a gateway.</p>` },
+ { id:'messages', icon:'bi-envelope', title:'Messages', aud:A_ALL, body:`<p>Private messages between colleagues. Only the sender and recipients can read a message. Unread ones show a red number on the sidebar.</p>` },
+ { id:'portal', icon:'bi-link-45deg', title:'The parent and student portal', aud:['admin','principal','exam','teacher','bursar','viewer'], body:`
+  <p>Parents and students use <b>no account</b>. On the Home tab you will find <b>three links</b>:</p>
+  <ul><li><b>Link 1, full link:</b> opens the Install page first, then the portal.</li><li><b>Link 2, short link:</b> also opens the Install page; shorter for flyers and WhatsApp groups.</li><li><b>Link 3, direct link:</b> goes straight to the portal in the browser with no installation.</li></ul>
+  <table class="mini"><tr><th>Tab</th><th>What the family types</th></tr>
+  <tr><td>Check Result</td><td>Select <b>session, term and class</b> and type the <b>passcode</b> the school gave that student. Nothing else.</td></tr>
+  <tr><td>Assignments, CBT, Pay Fees</td><td><b>Admission number and surname, in CAPITAL LETTERS</b>.</td></tr></table>
+  <div class="tip">Parents can <b>Download PDF</b> of the signed result. Give a printed Parent and Student Guide to families (the portal also has a Help tab).</div>` },
+ { id:'printing', icon:'bi-printer', title:'Printing tips', aud:A_ALL, body:`<p>Everything prints on <b>A4 portrait</b>. In the print window choose A4 and Portrait, and switch <b>Background graphics</b> on so colours print, or choose <b>Save as PDF</b>.</p>` },
+ { id:'viewer', icon:'bi-search-heart', title:'Helping walk-ins (front desk)', aud:['viewer'], body:`<p>Use the school's Direct portal link. Select the session, term and class and type the student's passcode. If you need a passcode, ask the exam office. Never share one student's passcode with another family.</p>` },
+ { id:'upgrade', icon:'bi-arrow-up-circle', title:'Upgrading your plan', aud:A_ADMIN, body:`<p>From Home tap <b>Upgrade</b>, choose Essentials or Premium and a billing cycle, pay by bank transfer, upload your payment screenshot and submit. We review it within the hour and email you; your plan, start and due dates then show on Home. Every paid plan has a 30-day money-back guarantee.</p>` },
+ { id:'help', icon:'bi-headset', title:'Getting help', aud:A_ALL, body:`<p>Email <b>technologyokv@gmail.com</b>, call or WhatsApp <b>+234 810 414 1138</b>, or visit <b>www.okvtechnology.com</b>.</p>` }
+];
+
+function escapeHtml(str){ return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+// Banner
+document.getElementById('roleBanner').innerHTML = `<i class="bi bi-person-check"></i> This manual is written for your role${myKeys.length>1?'s':''}: <strong>${myKeys.map(k => ROLE_TITLE[k]).join(', ') || escapeHtml(roles.join(', ')) || '-'}</strong>`;
+
+// One quick-start card per role the person holds
+document.getElementById('quickStarts').innerHTML = myKeys.map(k => `
+  <div class="quick"><h2><i class="bi bi-rocket-takeoff"></i> Quick start: ${ROLE_TITLE[k]}</h2><ol>${QUICK[k].map(s => `<li>${s}</li>`).join('')}</ol></div>`).join('');
+
+// The sections that apply to this person
+const mine = SECTIONS.filter(s => can(s.aud));
+document.getElementById('toc').innerHTML = mine.map(s => `<a href="#sec-${s.id}">${s.title.replace(/&amp;/g,'&')}</a>`).join('');
+document.getElementById('manualBody').innerHTML = mine.map(s => {
+  const locked = s.premium && !isPremium;
+  return `<div class="manual-section" id="sec-${s.id}">
+    <h2><i class="bi ${s.icon}"></i> ${s.title}${s.premium ? ' <span class="badge bg-warning text-dark">Premium</span>' : ''}</h2>
+    ${s.who ? `<div class="who">${s.who}</div>` : ''}
+    ${locked ? `<div class="premium-lock"><i class="bi bi-lock"></i> This feature is on the <strong>Premium</strong> plan. <a href="upgrade.html">Upgrade</a> to use it.</div>` : s.body}
+  </div>`;
+}).join('');
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+document.getElementById('downloadBtn').addEventListener('click', () => window.print());
+// Branded A4 letterhead on the printed manual
+window.smsPrint.attachPage(() => ({ title: 'User Manual', meta: [['For', myKeys.map(k => ROLE_TITLE[k]).join(', ')], ['User', (session && session.fullName) || '']] }));
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

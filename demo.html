@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Live Demo — OKV School Management System</title>
+<meta name="description" content="Try the real OKV School Management System dashboard with sample data — no signup. Every tab and button works; nothing is saved.">
+<meta property="og:title" content="Live Demo — OKV School Management System">
+<meta property="og:description" content="Try the real dashboard with sample data — no signup required.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://YOUR-DOMAIN-HERE.com/demo.html">
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#14213D;font-family:system-ui,sans-serif;color:#fff;text-align:center;padding:1rem;}
+  .box{max-width:340px;}
+  .seal{width:64px;height:56px;border-radius:28px;margin:0 auto 1rem;background:radial-gradient(circle at 35% 30%,#B8863B,#93672B);display:flex;align-items:center;justify-content:center;color:#14213D;font-weight:800;}
+  h1{font-size:1.1rem;margin:0 0 .4rem;} p{font-size:.85rem;opacity:.8;margin:0 0 1rem;}
+  a{color:#B8863B;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="seal">OKV</div>
+  <h1>Opening the live demo…</h1>
+  <p>This is the real dashboard running on sample data. Every tab and button works — nothing is saved.</p>
+  <noscript><p>JavaScript is required for the demo.</p></noscript>
+  <a href="dashboard.html" id="manualLink" style="display:none;">Tap here if it doesn't open</a>
+</div>
+<script>
+try {
+  // A fresh visit always starts a clean demo; the role choice and data reset.
+  ['demo_db_v1','demo_profile','demo_ls_sms_session','demo_popup_shown'].forEach(k => sessionStorage.removeItem(k));
+  sessionStorage.setItem('sms_demo', '1');
+  const view = new URLSearchParams(window.location.search).get('view');
+  if (view === 'owner') { sessionStorage.setItem('demo_profile', 'owner'); window.location.replace('superadmin.html'); }
+  else window.location.replace('dashboard.html');
+} catch (e) {
+  document.getElementById('manualLink').style.display = 'inline';
+}
+setTimeout(() => { document.getElementById('manualLink').style.display = 'inline'; }, 4000);
+</script>
+</body>
+</html>

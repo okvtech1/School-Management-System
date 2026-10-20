@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Fee Payments</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;}
+  table{font-size:.82rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .status-pill{font-size:.68rem;font-weight:700;padding:.2em .55em;border-radius:6px;white-space:nowrap;}
+  .status-pending{background:#FCF3DA;color:#8A6A12;}
+  .status-confirmed-full{background:#DFF3E4;color:#1E6B3A;}
+  .status-confirmed-partial{background:#E4F0FB;color:#1D5A9C;}
+  .status-confirmed-unpaid,.status-rejected{background:#FBE4E4;color:#8B1E3F;}
+  .filter-tabs{display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;}
+  .filter-tabs button{border:1px solid #DCD0B4;background:#fff;color:#5b5442;font-size:.78rem;font-weight:600;padding:.3em .8em;border-radius:20px;}
+  .filter-tabs button.active{background:#14213D;border-color:#14213D;color:#fff;}
+  .receipt-thumb{width:40px;height:40px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #DCD0B4;}
+  #receiptPrintHost{display:none;}
+  .rc-doc{width:190mm;background:#fff;font-family:"Segoe UI",Arial,sans-serif;color:#1a1a1a;}
+  .rc-title{margin-top:6mm;background:var(--sch-primary);color:var(--sch-on-primary);text-align:center;font-weight:800;font-size:11pt;letter-spacing:.1em;padding:2.4mm 0;border-radius:1mm;}
+  .rc-top{display:flex;justify-content:space-between;gap:3mm;margin:4mm 0;}
+  .rc-top .rc-no,.rc-cell,.rc-words{background:#f6f6f4;border:.25mm solid #d6d3c8;border-radius:1.2mm;padding:1.8mm 3mm;}
+  .rc-top .rc-no{min-width:55mm;}
+  .rc-top .k,.rc-cell .k,.rc-words .k{display:block;font-size:5.9pt;letter-spacing:.09em;color:#6b6b6b;text-transform:uppercase;font-weight:700;margin-bottom:.7mm;}
+  .rc-top .v,.rc-cell .v,.rc-words .v{font-size:9.6pt;font-weight:700;color:#111;}
+  .rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm;}
+  .rc-table{width:100%;border-collapse:collapse;margin:5mm 0 3mm;font-size:10pt;}
+  .rc-table td{padding:2.6mm 3mm;border-bottom:.25mm solid #d6d3c8;}
+  .rc-table td.amt{text-align:right;font-weight:700;width:48mm;}
+  .rc-table tr.rc-paid td{background:var(--sch-tint);color:var(--sch-primary);font-weight:800;font-size:11pt;border-bottom:.5mm solid var(--sch-primary);}
+  .rc-words{margin-bottom:3mm;}
+  .rc-sign{display:grid;grid-template-columns:1fr 1fr;gap:20mm;margin-top:12mm;font-size:8pt;text-align:center;}
+  .rc-sign .box{min-height:18mm;display:flex;flex-direction:column;justify-content:flex-end;}
+  .rc-sign img{max-height:14mm;max-width:46mm;object-fit:contain;display:block;margin:0 auto 1mm;}
+  .rc-sign .line{border-top:.3mm solid #222;padding-top:1.2mm;font-weight:600;min-height:4.5mm;}
+  .rc-sign .lbl{color:#666;font-size:6.6pt;letter-spacing:.07em;text-transform:uppercase;margin-top:.6mm;}
+  @media print{
+    @page{size:A4 portrait;margin:10mm;}
+    body.printing-receipt{background:#fff !important;padding:0 !important;}
+    body.printing-receipt > *{display:none !important;}
+    body.printing-receipt #receiptPrintHost{display:block !important;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — Fee Payments requires connectivity for review/confirmation.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <h1>Fee Payments</h1>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+  </div>
+
+  <!-- Fee types -->
+  <div class="card-panel">
+    <h2><i class="bi bi-tags"></i> Fee Types</h2>
+    <div class="row g-2 mb-2">
+      <div class="col-md-5"><input class="form-control form-control-sm" id="ft_name" placeholder="e.g. Tuition, PTA Levy"></div>
+      <div class="col-md-3"><input type="number" min="0" class="form-control form-control-sm" id="ft_amount" placeholder="Standard amount"></div>
+      <div class="col-md-3"><button class="btn btn-sm btn-forest w-100" id="ft_addBtn">Add Fee</button></div>
+    </div>
+    <div id="feeTypeList"></div>
+  </div>
+
+  <!-- Send fee list to parents -->
+  <div class="card-panel">
+    <h2><i class="bi bi-envelope-paper"></i> Send Fee List to Parents</h2>
+    <div class="small text-muted mb-2">Emails every parent/guardian in the selected class the current fee list and their child's balance, using the same fee list a parent sees on the public payment page.</div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-3"><select class="form-select form-select-sm" id="fl_class"></select></div>
+      <div class="col-md-2"><select class="form-select form-select-sm" id="fl_arm"><option value="">All Arms</option></select></div>
+      <div class="col-md-3">
+        <select class="form-select form-select-sm" id="fl_term">
+          <option>First Term</option><option>Second Term</option><option>Third Term</option>
+        </select>
+      </div>
+      <div class="col-md-2"><input class="form-control form-control-sm" id="fl_session" placeholder="Session"></div>
+      <div class="col-md-2"><button class="btn btn-sm btn-forest w-100" id="fl_sendBtn">Send</button></div>
+    </div>
+    <div id="feeListSendResult" class="small mt-2"></div>
+  </div>
+
+  <!-- Payments queue -->
+  <div class="card-panel">
+    <h2><i class="bi bi-receipt"></i> Submitted Payments</h2>
+    <div class="filter-tabs" id="filterTabs">
+      <button data-f="pending" class="active">Pending</button>
+      <button data-f="confirmed-full">Confirmed — Full</button>
+      <button data-f="confirmed-partial">Confirmed — Partial</button>
+      <button data-f="confirmed-unpaid">Confirmed — Unpaid</button>
+      <button data-f="rejected">Rejected</button>
+      <button data-f="all">All</button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th></th><th>Student</th><th>Fee</th><th>Declared</th><th>Reference</th><th>Submitted</th><th>Status</th><th></th></tr></thead>
+        <tbody id="paymentsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt viewer modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Receipt</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body text-center"><img id="receiptModalImg" style="max-width:100%;border-radius:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm/reject modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Review Payment</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="rv_recordId">
+        <div class="small text-muted mb-2" id="rv_summary"></div>
+        <div class="mb-2">
+          <label class="form-label small">Amount Confirmed Received</label>
+          <input type="number" min="0" class="form-control form-control-sm" id="rv_amount">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">Note (optional, included in the email to the payer)</label>
+          <textarea class="form-control form-control-sm" id="rv_note" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-outline-danger" id="rv_rejectBtn">Reject</button>
+        <button class="btn btn-sm btn-forest" id="rv_confirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="print-lib.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const FINANCE_ROLES = ['Super Administrator','School Administrator','Bursar / Accountant'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => FINANCE_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  return res.json();
+}
+
+let feeTypes = [];
+let payments = [];
+let currentFilter = 'pending';
+
+/* ============================== FEE TYPES ============================== */
+async function loadFeeTypes(){
+  feeTypes = await window.smsSync.getRecords('feeType');
+  renderFeeTypes();
+}
+function renderFeeTypes(){
+  document.getElementById('feeTypeList').innerHTML = feeTypes.map(r => `
+    <span class="badge bg-light text-dark border me-2 mb-2" style="font-size:.8rem;">
+      ${r.payload.name}${r.payload.amount ? ` — ₦${r.payload.amount}` : ''}
+      <button class="btn btn-sm btn-link text-danger p-0 ms-1 ft-del" data-id="${r.recordId}" style="font-size:.8rem;">✕</button>
+    </span>`).join('') || '<div class="small text-muted">No fee types yet — add one above.</div>';
+
+  document.querySelectorAll('.ft-del').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Remove this fee type?')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    feeTypes = feeTypes.filter(r => r.recordId !== b.dataset.id);
+    renderFeeTypes();
+  }));
+}
+document.getElementById('ft_addBtn').addEventListener('click', async () => {
+  const name = document.getElementById('ft_name').value.trim();
+  const amount = Number(document.getElementById('ft_amount').value) || null;
+  if (!name){ alert('Enter a fee name.'); return; }
+  const payload = { name, amount };
+  const newId = await window.smsSync.saveRecord('feeType', payload, null);
+  feeTypes.push({ recordId: newId, type:'feeType', payload });
+  renderFeeTypes();
+  document.getElementById('ft_name').value = ''; document.getElementById('ft_amount').value = '';
+});
+
+/* ============================== PAYMENTS ============================== */
+async function loadPayments(){
+  payments = await window.smsSync.getRecords('feePayment');
+  payments.sort((a,b) => new Date(b.payload.submittedAt) - new Date(a.payload.submittedAt));
+  renderPayments();
+}
+function renderPayments(){
+  const rows = currentFilter === 'all' ? payments : payments.filter(r => r.payload.status === currentFilter);
+  const body = document.getElementById('paymentsTableBody');
+  body.innerHTML = rows.map(r => {
+    const p = r.payload;
+    return `<tr>
+      <td>${p.receiptDataUrl ? `<img src="${p.receiptDataUrl}" class="receipt-thumb view-receipt-btn" data-src="${p.receiptDataUrl}">` : '—'}</td>
+      <td>${p.fullName}<div class="small text-muted">${p.admissionNo} · ${p.class} ${p.arm||''}</div></td>
+      <td>${p.feeTypeName}<div class="small text-muted">${p.term} ${p.session}</div></td>
+      <td>${p.declaredAmount}</td>
+      <td class="small">${p.paymentReference}</td>
+      <td class="small">${new Date(p.submittedAt).toLocaleString([], {dateStyle:'short',timeStyle:'short'})}</td>
+      <td><span class="status-pill status-${p.status}">${p.status.replace('confirmed-','').replace('-',' ')}</span></td>
+      <td class="text-end">${p.status === 'pending' ? `<button class="btn btn-sm btn-forest review-btn" data-id="${r.recordId}">Review</button>` : (String(p.status).startsWith('confirmed') && Number(p.confirmedAmount) > 0 ? `<button class="btn btn-sm btn-outline-secondary receipt-print-btn" data-id="${r.recordId}"><i class="bi bi-printer"></i> Receipt</button>` : '')}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="text-center text-muted py-3">No payments in this view.</td></tr>';
+
+  body.querySelectorAll('.view-receipt-btn').forEach(el => el.addEventListener('click', () => {
+    document.getElementById('receiptModalImg').src = el.dataset.src;
+    new bootstrap.Modal(document.getElementById('receiptModal')).show();
+  }));
+  body.querySelectorAll('.review-btn').forEach(el => el.addEventListener('click', () => openReview(el.dataset.id)));
+  body.querySelectorAll('.receipt-print-btn').forEach(el => el.addEventListener('click', () => printReceipt(el.dataset.id)));
+}
+document.querySelectorAll('#filterTabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#filterTabs button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  currentFilter = b.dataset.f;
+  renderPayments();
+}));
+
+let reviewRecordId = null;
+function openReview(recordId){
+  reviewRecordId = recordId;
+  const p = payments.find(r => r.recordId === recordId).payload;
+  document.getElementById('rv_recordId').value = recordId;
+  document.getElementById('rv_summary').textContent = `${p.fullName} (${p.admissionNo}) — ${p.feeTypeName}, declared ₦${p.declaredAmount}${p.expectedAmount ? `, standard fee ₦${p.expectedAmount}` : ''}`;
+  document.getElementById('rv_amount').value = p.declaredAmount;
+  document.getElementById('rv_note').value = '';
+  new bootstrap.Modal(document.getElementById('reviewModal')).show();
+}
+document.getElementById('rv_confirmBtn').addEventListener('click', async () => {
+  await submitReview('confirmed');
+});
+document.getElementById('rv_rejectBtn').addEventListener('click', async () => {
+  await submitReview('rejected');
+});
+async function submitReview(decision){
+  const confirmedAmount = document.getElementById('rv_amount').value;
+  const bursarNote = document.getElementById('rv_note').value.trim();
+  const resp = await apiCall({ action:'confirmFeePayment', recordId: reviewRecordId, decision, confirmedAmount, bursarNote });
+  if (!resp.ok){ alert(resp.error); return; }
+  bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+  loadPayments();
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadFeeTypes();
+loadPayments();
+
+/* ============================== SEND FEE LIST TO PARENTS ============================== */
+let settingsForFeeList = null;
+async function loadFeeListClassOptions(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsForFeeList = payload;
+  document.getElementById('fl_class').innerHTML = (payload.classes || []).map(c => `<option value="${c}">${c}</option>`).join('');
+  fillFeeListArms(document.getElementById('fl_class').value);
+}
+function fillFeeListArms(className){
+  const arms = (settingsForFeeList && settingsForFeeList.classArms || {})[className] || [];
+  document.getElementById('fl_arm').innerHTML = '<option value="">All Arms</option>' + arms.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+document.getElementById('fl_class').addEventListener('change', (e) => fillFeeListArms(e.target.value));
+
+document.getElementById('fl_sendBtn').addEventListener('click', async () => {
+  const classFilter = document.getElementById('fl_class').value;
+  const arm = document.getElementById('fl_arm').value;
+  const term = document.getElementById('fl_term').value;
+  const session = document.getElementById('fl_session').value.trim();
+  const resultBox = document.getElementById('feeListSendResult');
+  if (!classFilter){ alert('Select a class.'); return; }
+
+  document.getElementById('fl_sendBtn').disabled = true;
+  resultBox.textContent = 'Sending…'; resultBox.className = 'small mt-2 text-muted';
+  const resp = await apiCall({ action:'sendFeeListEmail', classFilter, arm, term, session });
+  document.getElementById('fl_sendBtn').disabled = false;
+
+  if (!resp.ok){ resultBox.textContent = resp.error; resultBox.className = 'small mt-2 text-danger'; return; }
+  resultBox.className = 'small mt-2 text-success';
+  resultBox.textContent = `Sent to ${resp.sent} of ${resp.totalStudents} parent(s)/guardian(s).` +
+    (resp.skipped.length ? ` Skipped: ${resp.skipped.map(s=>`${s.name} (${s.reason})`).join(', ')}` : '');
+});
+
+loadFeeListClassOptions();
+
+/* ============================== PRINTABLE FEE RECEIPT (A4 portrait, school letterhead) ============================== */
+const ONES = ['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+const TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+function wordsBelow1000(n){
+  let s = '';
+  if (n >= 100){ s += ONES[Math.floor(n/100)] + ' hundred'; n %= 100; if (n) s += ' and '; }
+  if (n >= 20){ s += TENS[Math.floor(n/10)]; if (n % 10) s += '-' + ONES[n%10]; }
+  else if (n > 0) s += ONES[n];
+  return s;
+}
+function amountInWords(n){
+  n = Math.round(Number(n) || 0);
+  if (n === 0) return 'Zero naira only';
+  const parts = [];
+  const bn = Math.floor(n / 1e9), m = Math.floor((n % 1e9) / 1e6), th = Math.floor((n % 1e6) / 1e3), rest = n % 1e3;
+  if (bn) parts.push(wordsBelow1000(bn) + ' billion');
+  if (m) parts.push(wordsBelow1000(m) + ' million');
+  if (th) parts.push(wordsBelow1000(th) + ' thousand');
+  if (rest) parts.push((parts.length && rest < 100 ? 'and ' : '') + wordsBelow1000(rest));
+  const s = parts.join(' ').replace(/\s+/g, ' ').trim();
+  return s.charAt(0).toUpperCase() + s.slice(1) + ' naira only';
+}
+async function printReceipt(recordId){
+  const r = payments.find(x => x.recordId === recordId); if (!r) return;
+  const p = r.payload;
+  const { brand: b, settings } = await window.smsPrint.loadBrand();
+  window.smsPrint.applyTheme(b);
+  const e = window.smsPrint.esc;
+  const paid = Number(p.confirmedAmount || 0), expected = Number(p.expectedAmount || 0);
+  const balance = Math.max(0, expected - paid);
+  const when = p.confirmedAt ? new Date(p.confirmedAt) : new Date();
+  const cell = (k, v) => `<div class="rc-cell"><span class="k">${e(k)}</span><span class="v">${e(v || '-')}</span></div>`;
+  let host = document.getElementById('receiptPrintHost');
+  if (!host){ host = document.createElement('div'); host.id = 'receiptPrintHost'; document.body.appendChild(host); }
+  host.innerHTML = `
+    <div class="rc-doc">
+      ${window.smsPrint.letterhead(b)}
+      <div class="rc-title">OFFICIAL PAYMENT RECEIPT</div>
+      <div class="rc-top"><div class="rc-no"><span class="k">Receipt no.</span><span class="v">${e(p.paymentReference)}</span></div><div class="rc-no"><span class="k">Date</span><span class="v">${e(when.toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' }))}</span></div></div>
+      <div class="rc-grid">
+        ${cell('Received from / pupil', p.fullName)}${cell('Admission no.', p.admissionNo)}
+        ${cell('Class', (p.class || '') + ' ' + (p.arm || ''))}${cell('Term / session', (p.term || '') + ' ' + (p.session || ''))}
+        ${cell('Payment for', p.feeTypeName)}${cell('Payment method', 'Bank transfer')}
+      </div>
+      <table class="rc-table">
+        <tr><td>Fee amount due</td><td class="amt">&#8358; ${expected.toLocaleString()}</td></tr>
+        <tr class="rc-paid"><td>Amount received</td><td class="amt">&#8358; ${paid.toLocaleString()}</td></tr>
+        <tr><td>Balance outstanding for this item</td><td class="amt">&#8358; ${balance.toLocaleString()}</td></tr>
+      </table>
+      <div class="rc-words"><span class="k">Amount in words</span><span class="v">${e(amountInWords(paid))}</span></div>
+      <div class="rc-sign">
+        <div class="box"><div class="line">${e(p.confirmedBy || '')}</div><div class="lbl">Received by (Bursar)</div></div>
+        <div class="box">${settings.principalSignature ? `<img src="${e(settings.principalSignature)}" alt="">` : ''}<div class="line">${e(settings.principalName || '')}</div><div class="lbl">Principal / Head teacher</div></div>
+      </div>
+      ${window.smsPrint.footer(b, 'This receipt was issued after the payment was confirmed against the school bank record. Please keep it safe.')}
+    </div>`;
+  document.body.classList.add('printing-receipt');
+  setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove('printing-receipt'), 400); }, 200);
+}
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

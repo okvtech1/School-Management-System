@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Promote / Repeat Students</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;}
+  table{font-size:.85rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .action-badge{font-size:.68rem;font-weight:700;padding:.2em .55em;border-radius:6px;}
+  .badge-promote{background:#DFF3E4;color:#1E6B3A;}
+  .badge-repeat{background:#FCF3DA;color:#8A6A12;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — Promote/Repeat requires connectivity.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <h1>Promote / Repeat Students</h1>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+      <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <h2><i class="bi bi-arrow-repeat"></i> From</h2>
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-auto">
+        <label class="form-label small">Current Class</label>
+        <select class="form-select form-select-sm" id="fromClass"></select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small">Arm</label>
+        <select class="form-select form-select-sm" id="fromArm"><option value="">All Arms</option></select>
+      </div>
+      <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" id="loadStudentsBtn">Load Students</button></div>
+    </div>
+  </div>
+
+  <div class="card-panel" id="studentListCard" style="display:none;">
+    <h2><i class="bi bi-people"></i> Students</h2>
+    <div class="mb-2">
+      <button class="btn btn-sm btn-outline-secondary" id="selectAllBtn">Select All</button>
+      <button class="btn btn-sm btn-outline-secondary" id="clearSelBtn">Clear Selection</button>
+      <span class="small text-muted ms-2" id="selCountText">0 selected</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th></th><th>Name</th><th>Admission No.</th><th>Current Class</th></tr></thead>
+        <tbody id="studentTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card-panel" id="moveCard" style="display:none;">
+    <h2><i class="bi bi-signpost-split"></i> Move Selected Students To</h2>
+    <div class="small text-muted mb-2">Choose the same class to <strong>Repeat</strong>, or a different class to <strong>Promote</strong> (or transfer). This updates each student's current class/arm — their past term results stay correctly tagged to whatever class they were in at the time.</div>
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-auto">
+        <label class="form-label small">New Class</label>
+        <select class="form-select form-select-sm" id="toClass"></select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small">New Arm</label>
+        <select class="form-select form-select-sm" id="toArm"></select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small">New Session (for the record)</label>
+        <input class="form-control form-control-sm" id="newSession" placeholder="e.g. 2026/2027">
+      </div>
+      <div class="col-auto"><button class="btn btn-sm btn-forest" id="moveBtn">Move Students</button></div>
+    </div>
+    <div id="moveResult" class="small mt-2"></div>
+  </div>
+
+  <div class="card-panel">
+    <h2><i class="bi bi-clock-history"></i> Recent Promotions/Repeats</h2>
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead><tr><th>Student</th><th>From</th><th>To</th><th>Type</th><th>Session</th><th>Date</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const ALLOWED_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => ALLOWED_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+let settingsState = null;
+let students = [];
+let promotions = [];
+let selected = new Set();
+
+function fillClassSelects(){
+  const opts = (settingsState.classes || []).map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('fromClass').innerHTML = opts;
+  document.getElementById('toClass').innerHTML = opts;
+  fillArmSelect('fromArm', document.getElementById('fromClass').value, true);
+  fillArmSelect('toArm', document.getElementById('toClass').value, false);
+}
+function fillArmSelect(selectId, className, includeAllOption){
+  const arms = (settingsState.classArms || {})[className] || [];
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = (includeAllOption ? '<option value="">All Arms</option>' : '') +
+    arms.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+document.getElementById('fromClass').addEventListener('change', (e) => fillArmSelect('fromArm', e.target.value, true));
+document.getElementById('toClass').addEventListener('change', (e) => fillArmSelect('toArm', e.target.value, false));
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsState = payload;
+  fillClassSelects();
+  await loadHistory();
+}
+
+document.getElementById('loadStudentsBtn').addEventListener('click', async () => {
+  const cls = document.getElementById('fromClass').value;
+  const arm = document.getElementById('fromArm').value;
+  students = (await window.smsSync.getRecords('student')).filter(r =>
+    r.payload.class === cls && (!arm || r.payload.arm === arm));
+  selected = new Set();
+  renderStudentTable();
+  document.getElementById('studentListCard').style.display = 'block';
+  document.getElementById('moveCard').style.display = students.length ? 'block' : 'none';
+});
+
+function renderStudentTable(){
+  document.getElementById('studentTableBody').innerHTML = students.map(r => `
+    <tr>
+      <td><input type="checkbox" class="stu-cb" data-id="${r.recordId}" ${selected.has(r.recordId)?'checked':''}></td>
+      <td>${r.payload.fullName}</td><td>${r.payload.admissionNo || '—'}</td>
+      <td>${r.payload.class}${r.payload.arm ? ' ' + r.payload.arm : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No students found in this class/arm.</td></tr>';
+  document.querySelectorAll('.stu-cb').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) selected.add(cb.dataset.id); else selected.delete(cb.dataset.id);
+    updateSelCount();
+  }));
+  updateSelCount();
+}
+function updateSelCount(){ document.getElementById('selCountText').textContent = `${selected.size} selected`; }
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+  students.forEach(r => selected.add(r.recordId));
+  renderStudentTable();
+});
+document.getElementById('clearSelBtn').addEventListener('click', () => {
+  selected.clear();
+  renderStudentTable();
+});
+
+document.getElementById('moveBtn').addEventListener('click', async () => {
+  const toClass = document.getElementById('toClass').value;
+  const toArm = document.getElementById('toArm').value;
+  const newSession = document.getElementById('newSession').value.trim();
+  const resultBox = document.getElementById('moveResult');
+  if (!selected.size){ alert('Select at least one student.'); return; }
+  if (!confirm(`Move ${selected.size} student(s) to ${toClass}${toArm?' '+toArm:''}? This updates their current class immediately.`)) return;
+
+  document.getElementById('moveBtn').disabled = true;
+  resultBox.textContent = 'Moving…'; resultBox.className = 'small mt-2 text-muted';
+
+  let moved = 0;
+  for (const recordId of selected) {
+    const stu = students.find(s => s.recordId === recordId);
+    if (!stu) continue;
+    const fromClass = stu.payload.class, fromArm = stu.payload.arm || '';
+    const updatedPayload = { ...stu.payload, class: toClass, arm: toArm };
+    await window.smsSync.saveRecord('student', updatedPayload, recordId);
+
+    const actionType = toClass === fromClass ? 'repeat' : 'promote';
+    await window.smsSync.saveRecord('studentPromotion', {
+      studentId: recordId, studentName: stu.payload.fullName,
+      fromClass, fromArm, toClass, toArm, type: actionType,
+      session: newSession, movedBy: session.fullName, movedAt: new Date().toISOString()
+    }, null);
+    moved++;
+  }
+
+  document.getElementById('moveBtn').disabled = false;
+  resultBox.className = 'small mt-2 text-success';
+  resultBox.textContent = `Moved ${moved} student(s) to ${toClass}${toArm ? ' ' + toArm : ''}.`;
+  selected.clear();
+  document.getElementById('loadStudentsBtn').click();
+  loadHistory();
+});
+
+async function loadHistory(){
+  promotions = await window.smsSync.getRecords('studentPromotion');
+  promotions.sort((a,b) => new Date(b.payload.movedAt) - new Date(a.payload.movedAt));
+  document.getElementById('historyBody').innerHTML = promotions.slice(0, 30).map(r => {
+    const p = r.payload;
+    return `<tr>
+      <td>${p.studentName}</td>
+      <td>${p.fromClass}${p.fromArm?' '+p.fromArm:''}</td>
+      <td>${p.toClass}${p.toArm?' '+p.toArm:''}</td>
+      <td><span class="action-badge badge-${p.type}">${p.type}</span></td>
+      <td>${p.session || '—'}</td>
+      <td class="small">${new Date(p.movedAt).toLocaleDateString()}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">No promotions/repeats recorded yet.</td></tr>';
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

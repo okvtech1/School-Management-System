@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Dashboard</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  html,body{height:100%;margin:0;}
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;overflow:hidden;}
+  .wrap{max-width:760px;margin:0 auto;padding:1.25rem;}
+  #tabPanelHome.wrap{max-width:1180px;}   /* wide enough for the chart grid */
+  #tabPanelHome > .card-panel:not(#kpiPanel){max-width:760px;margin-left:auto;margin-right:auto;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.8rem;}
+  .role-badge{display:inline-block;background:#F1E7D3;color:#93672B;font-size:.72rem;font-weight:700;padding:.28em .65em;border-radius:6px;margin:0 .3rem .3rem 0;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2500;}
+  .sync-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;}
+  .sync-status{font-size:.8rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+
+  /* ===== Home tab: KPI cards + mini charts ===== */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem;}
+  .kpi-card{border-radius:14px;padding:1rem 1.1rem;background:#fff;border:1px solid #DCD0B4;box-shadow:0 4px 14px rgba(20,33,61,.06);display:flex;flex-direction:column;gap:.3rem;}
+  .kpi-card .kpi-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;margin-bottom:.2rem;}
+  .kpi-card .kpi-value{font-size:1.4rem;font-weight:800;color:#14213D;}
+  .kpi-card .kpi-label{font-size:.72rem;color:#7a7259;text-transform:uppercase;letter-spacing:.04em;}
+  .kpi-navy .kpi-icon{background:#E4F0FB;color:#1D5A9C;}
+  .kpi-gold .kpi-icon{background:#FCF3DA;color:#8A6A12;}
+  .kpi-green .kpi-icon{background:#DFF3E4;color:#1E6B3A;}
+  .kpi-red .kpi-icon{background:#FBE4E4;color:#8B1E3F;}
+  .kpi-card[data-go]{cursor:pointer;transition:transform .12s,box-shadow .12s;} .kpi-card[data-go]:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(20,33,61,.12);}
+  .kpi-card .kpi-sub{font-size:.7rem;color:#9a9078;min-height:1em;}
+  .insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:1rem;margin-bottom:1rem;}
+  .insight-card{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1rem 1.1rem;box-shadow:0 4px 14px rgba(20,33,61,.06);min-width:0;}
+  .insight-card h3{font-size:.92rem;font-weight:800;color:#14213D;margin:0;} .insight-card .ic-sub{font-size:.72rem;color:#9a9078;margin:.1rem 0 .6rem;}
+  .insight-card .ic-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;} .insight-card .ic-go{font-size:.7rem;color:#93672B;font-weight:700;text-decoration:none;white-space:nowrap;}
+  @media print{.insight-grid{grid-template-columns:1fr 1fr;} .insight-card{break-inside:avoid;}}
+  .mini-chart{display:flex;gap:.9rem;align-items:flex-end;height:110px;overflow-x:auto;padding-top:.5rem;}
+  .mini-chart .mc-col{display:flex;flex-direction:column;align-items:center;gap:.25rem;min-width:34px;}
+  .mini-chart .mc-bar{width:16px;border-radius:4px 4px 0 0;background:#B8863B;}
+  .mini-chart .mc-lbl{font-size:.62rem;color:#7a7259;}
+  .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#2F6B4F;margin-right:.35rem;animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  /* ===== App shell: left sidebar (vertical tabs) + header + content ===== */
+  .app-shell{display:flex;height:100vh;overflow:hidden;}
+  .sidebar{
+    width:236px;flex:none;background:#14213D;display:flex;flex-direction:column;
+    transition:transform .25s ease;z-index:1600;
+  }
+  .sidebar-brand{
+    padding:1rem 1.1rem;color:#fff;font-weight:800;font-size:.92rem;
+    border-bottom:1px solid rgba(255,255,255,.12);display:flex;align-items:center;gap:.55rem;flex:none;
+  }
+  .sidebar-brand .seal{width:34px;height:30px;border-radius:15px;background:radial-gradient(circle at 35% 30%, #B8863B, #93672B);display:flex;align-items:center;justify-content:center;color:#14213D;font-weight:800;font-size:.62rem;letter-spacing:-.02em;flex:none;}
+  .tab-bar{flex:1;overflow-y:auto;padding:.7rem;display:flex;flex-direction:column;gap:.25rem;}
+  .tab-bar::-webkit-scrollbar{width:5px;}
+  .tab-bar .tab-btn{
+    width:100%;text-align:left;border:none;background:transparent;color:#cfd6e8;font-size:.84rem;font-weight:600;
+    padding:.6em .8em;border-radius:10px;display:flex;align-items:center;gap:.6em;white-space:nowrap;
+  }
+  .tab-bar .tab-btn.active{background:#B8863B;color:#14213D;}
+  .tab-bar .tab-btn:hover:not(.active){background:rgba(255,255,255,.1);}
+  .tab-bar .tab-btn .badge{margin-left:auto;}
+
+  .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(20,33,61,.45);z-index:1500;}
+  .sidebar-backdrop.show{display:block;}
+
+  .main-col{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh;}
+  .app-header{background:#fff;border-bottom:1px solid #DCD0B4;padding:.9rem 1.25rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;flex:none;}
+  .app-header .left-group{display:flex;align-items:center;gap:.7rem;}
+  .app-header h1{font-size:1.15rem;font-weight:700;color:#14213D;margin:0;}
+  .sidebar-toggle{display:none;background:none;border:1px solid #DCD0B4;border-radius:8px;width:38px;height:38px;align-items:center;justify-content:center;color:#14213D;font-size:1.1rem;flex:none;}
+
+  .content-area{flex:1;overflow:auto;min-height:0;}
+  #tabPanelFrame{display:none;height:100%;}
+  #contentFrame{width:100%;height:100%;border:none;display:block;}
+
+  /* ===== Mobile: sidebar becomes an off-canvas drawer, toggled by the header button ===== */
+  @media (max-width: 900px){
+    .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);}
+    .sidebar.open{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.35);}
+    .sidebar-toggle{display:inline-flex;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — your changes are saved locally and will sync automatically once you're back online.</div>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><span class="seal">OKV</span> OKV School Management System</div>
+    <nav class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-page="home"><i class="bi bi-house-door"></i> Home</button>
+    </nav>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="main-col">
+    <div class="app-header">
+      <div class="left-group">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu"><i class="bi bi-list"></i></button>
+        <div>
+          <h1 id="welcomeMsg">Welcome</h1>
+          <div id="roleBadges"></div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-warning" id="upgradeIconBtn" style="display:none;" title="Upgrade your plan"><i class="bi bi-arrow-up-circle"></i> Upgrade</button>
+        <button class="btn btn-sm btn-outline-secondary" id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <div class="content-area">
+  <div id="tabPanelHome" class="wrap">
+
+    <!-- Subscription card: trial countdown, active-plan status, or a pending upgrade request —
+         shown to admin-tier roles only, since they're the ones who'd act on it. -->
+    <div class="card-panel" id="trialCard" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <div class="fw-bold" id="trialTitle" style="color:#14213D;"></div>
+          <div class="small text-muted" id="trialSub"></div>
+        </div>
+        <button class="btn btn-sm btn-forest" id="trialCardCta">Upgrade Now</button>
+      </div>
+    </div>
+
+    <div id="homeWidgetsAnchor">
+      <div class="card-panel">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <h2 style="margin:0;"><i class="bi bi-speedometer2"></i> <span id="overviewTitle">Overview</span></h2>
+          <div class="small text-muted"><span class="live-dot"></span>Updates automatically</div>
+        </div>
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div class="small text-muted">Reflects records synced to this device and refreshes after every sync. Tap a number to open its tab.</div>
+      </div>
+      <div class="insight-grid" id="insightGrid"></div>
+    </div>
+
+    <div id="homeCardsAnchor"></div>
+
+    <!-- User Manual — visible to every role; content inside adapts to role/plan -->
+    <div class="card-panel">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="fw-bold" style="color:#14213D;"><i class="bi bi-book"></i> User Manual</div>
+          <div class="small text-muted">A guide to everything you have access to, tailored to your role and plan — downloadable as PDF.</div>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" id="openManualBtn">Open</button>
+      </div>
+    </div>
+
+    <!-- Sync status -->
+    <div class="card-panel">
+      <div class="sync-row">
+        <div class="sync-status" id="syncStatusText"><span class="dot offline"></span>Checking…</div>
+        <button class="btn btn-sm btn-forest" id="syncNowBtn"><i class="bi bi-arrow-repeat"></i> Sync Now</button>
+      </div>
+      <div class="small text-muted mt-2">This keeps your school data (students, scores, attendance, etc.) synced between this device and the server, and works offline too — changes save locally first and sync automatically when you're back online. Use the tabs on the left (or the ☰ menu button on a phone) to open any part of the system — each one opens right here on your dashboard, no full page reload needed.</div>
+    </div>
+
+    <!-- Change password -->
+    <div class="card-panel">
+      <h2>Change Password</h2>
+      <form id="pwForm">
+        <div class="mb-2">
+          <label class="form-label small">Current Password</label>
+          <input type="password" class="form-control" id="currentPw" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">New Password</label>
+          <input type="password" class="form-control" id="newPw" minlength="6" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Confirm New Password</label>
+          <input type="password" class="form-control" id="confirmPw" minlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-forest" id="pwSaveBtn">Update Password</button>
+        <div id="pwMsg" class="small mt-2"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="tabPanelFrame">
+    <iframe id="contentFrame" title="Dashboard section"></iframe>
+  </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sync engine must load before the logic below, which calls window.smsSync -->
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="charts-lib.js"></script>
+<script src="dashboard-metrics.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session){ window.location.href = 'login.html'; }
+if (session && session.isPlatformAdmin){ window.location.href = 'superadmin.html'; }
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  const data = await res.json();
+  if (!data.ok && /session/i.test(data.error||'')){ localStorage.removeItem('sms_session'); window.location.href='login.html'; }
+  return data;
+}
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+/* ============================== TAB SHELL ============================== */
+/* Every other page in the system still exists as its own file with its own
+   logic/session-guard — this shell just loads them inside an iframe instead
+   of doing a full page navigation, so switching between "pages" feels like
+   switching tabs. Each page's own "← Dashboard"/logout links target="_top"
+   or use window.top so they correctly break out of this iframe rather than
+   navigating only the iframe itself. */
+function showTab(page, btn){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else { const match = document.querySelector(`.tab-btn[data-page="${page}"]`); if (match) match.classList.add('active'); }
+
+  if (page === 'home'){
+    document.getElementById('tabPanelHome').style.display = 'block';
+    document.getElementById('tabPanelFrame').style.display = 'none';
+    history.replaceState(null, '', 'dashboard.html');
+    // Something may have changed in another tab (a new student, a confirmed payment, a read message).
+    if (typeof renderHomeWidgets === 'function') renderHomeWidgets();
+    if (typeof loadUnreadMessages === 'function') loadUnreadMessages();
+    if (typeof loadPendingPaymentAlert === 'function' && roles.some(r => PAYMENTS_PAGE_ROLES.includes(r))) refreshPendingBadge();
+  } else {
+    document.getElementById('tabPanelHome').style.display = 'none';
+    document.getElementById('tabPanelFrame').style.display = 'block';
+    const iframe = document.getElementById('contentFrame');
+    if (iframe.dataset.currentSrc !== page){ iframe.src = page; iframe.dataset.currentSrc = page; }
+    history.replaceState(null, '', 'dashboard.html#' + page.replace('.html',''));
+  }
+}
+document.getElementById('tabBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (btn) { showTab(btn.dataset.page, btn); closeSidebar(); }
+});
+
+/* Sidebar toggle — vertical tabs on the left, collapsed to an off-canvas drawer on mobile */
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarBackdrop').classList.add('show');
+}
+function closeSidebar(){
+  if (window.innerWidth > 900) return; // desktop: sidebar is always visible, nothing to close
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('show');
+}
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.contains('open') ? closeSidebar() : openSidebar();
+});
+document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebar);
+
+/* Welcome + roles */
+document.getElementById('welcomeMsg').textContent = `Welcome, ${session.fullName || session.username}`;
+const ADMIN_TIER = ['Super Administrator','School Administrator'];
+const SETTINGS_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher'];
+const STUDENT_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher','Bursar / Accountant'];
+const STAFF_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Bursar / Accountant'];
+const PARENT_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const ASSIGNMENT_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'];
+const SCORE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'];
+const RESULT_READ_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'];
+const FINANCE_ROLES = ['Super Administrator','School Administrator','Bursar / Accountant','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const IDCARD_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const SHARE_LINK_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher'];
+const PROMOTE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const PAYMENTS_PAGE_ROLES = ['Super Administrator','School Administrator','Bursar / Accountant'];
+const FINANCE_PAGE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Bursar / Accountant'];
+const PARENT_MSG_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'];
+const roles = session.roles || [];
+document.getElementById('roleBadges').innerHTML = roles.map(r => `<span class="role-badge">${r}</span>`).join('');
+
+/* Trial countdown, active-plan status, or pending-upgrade-request + Upgrade icon —
+   shown to admin-tier roles (they're the ones who'd act on it) */
+const PLAN_LABELS = { essentials: 'Essentials', premium: 'Premium' };
+function formatRemaining(ms){
+  if (ms <= 0) return null;
+  const days = Math.ceil(ms / (24*60*60*1000));
+  if (days >= 60) return `${Math.round(days/30)} months`;
+  if (days >= 14) return `${Math.round(days/7)} weeks`;
+  return `${days} day${days===1?'':'s'}`;
+}
+document.getElementById('trialCardCta').addEventListener('click', () => showTab('upgrade.html'));
+document.getElementById('upgradeIconBtn').addEventListener('click', () => showTab('upgrade.html'));
+document.getElementById('openManualBtn').addEventListener('click', () => showTab('manual.html'));
+
+if (roles.some(r => ADMIN_TIER.includes(r))) {
+  document.getElementById('upgradeIconBtn').style.display = 'inline-block';
+
+  if (session.subscriptionStatus === 'trial' && session.trialEndDate) {
+    const msLeft = new Date(session.trialEndDate).getTime() - Date.now();
+    const daysLeft = Math.max(0, Math.ceil(msLeft / (24*60*60*1000)));
+    document.getElementById('trialCard').style.display = 'block';
+    if (daysLeft <= 3) document.getElementById('trialCard').style.cssText += 'border:2px solid #8B1E3F;background:#FBE4E4;';
+    document.getElementById('trialTitle').textContent = daysLeft > 0
+      ? `${daysLeft} day${daysLeft===1?'':'s'} left in your free trial`
+      : 'Your free trial ends today';
+    document.getElementById('trialSub').textContent =
+      `You're on the ${PLAN_LABELS[session.plan] || session.plan || 'Essentials'} plan (${session.billingCycle || 'monthly'} billing). ` +
+      `Upgrade anytime to keep full access after your trial ends — your data stays exactly as you left it.`;
+  } else if (session.subscriptionStatus === 'active') {
+    document.getElementById('trialCard').style.display = 'block';
+    const planLabel = `${PLAN_LABELS[session.plan] || session.plan || 'Essentials'} (${session.billingCycle || 'monthly'} billing)`;
+    if (session.subscriptionExpiry) {
+      const msLeft = new Date(session.subscriptionExpiry).getTime() - Date.now();
+      const remaining = formatRemaining(msLeft);
+      const daysLeftActive = Math.ceil(msLeft / (24*60*60*1000));
+      if (daysLeftActive <= 7) document.getElementById('trialCard').style.cssText += 'border:2px solid #8B1E3F;background:#FBE4E4;';
+      document.getElementById('trialTitle').textContent = remaining
+        ? `${planLabel} — ${remaining} remaining`
+        : `${planLabel} — subscription has expired`;
+      const startTxt = session.subscriptionStartDate ? new Date(session.subscriptionStartDate).toDateString() : '—';
+      const dueTxt = new Date(session.subscriptionExpiry).toDateString();
+      document.getElementById('trialSub').textContent = `Started ${startTxt} · Due ${dueTxt}`;
+      document.getElementById('trialCardCta').textContent = remaining ? 'Manage / Upgrade' : 'Renew Now';
+    } else {
+      document.getElementById('trialTitle').textContent = `${planLabel} — Active`;
+      document.getElementById('trialSub').textContent = 'No expiry date on file — contact us if that looks wrong.';
+      document.getElementById('trialCardCta').textContent = 'Manage / Upgrade';
+    }
+  }
+
+  checkPendingUpgradeRequest();
+}
+
+async function checkPendingUpgradeRequest(){
+  try {
+    const requests = await window.smsSync.getRecords('upgradeRequest');
+    const pending = requests.filter(r => r.payload.status === 'pending');
+    if (!pending.length) return;
+    const latest = pending.sort((a,b) => new Date(b.payload.submittedAt) - new Date(a.payload.submittedAt))[0];
+    document.getElementById('trialCard').style.display = 'block';
+    document.getElementById('trialTitle').textContent = `Upgrade request pending review — ${latest.payload.requestedLabel || latest.payload.requestedPlan}`;
+    document.getElementById('trialSub').textContent = `Submitted ${new Date(latest.payload.submittedAt).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}. You'll get an email once it's confirmed.`;
+    document.getElementById('trialCardCta').textContent = 'View Upgrade Page';
+  } catch (e) {}
+}
+
+/* Tabs, built from the same role logic every page's own guard already uses */
+const tabBar = document.getElementById('tabBar');
+function addTab(page, icon, label, badgeId){
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn';
+  btn.dataset.page = page;
+  btn.innerHTML = `<i class="bi ${icon}"></i> ${label}${badgeId ? ` <span id="${badgeId}"></span>` : ''}`;
+  tabBar.appendChild(btn);
+}
+if (roles.some(r => ADMIN_TIER.includes(r))) addTab('users.html', 'bi-people', 'Users &amp; Roles');
+if (roles.some(r => ADMIN_TIER.includes(r))) addTab('backup.html', 'bi-cloud-arrow-down', 'Backup');
+if (roles.some(r => SETTINGS_ROLES.includes(r))) addTab('settings.html', 'bi-gear', 'Settings');
+if (roles.some(r => STUDENT_ROLES.includes(r))) addTab('students.html', 'bi-mortarboard', 'Students');
+if (roles.some(r => STUDENT_ROLES.includes(r))) addTab('admission-list.html', 'bi-list-ol', 'Admission List');
+if (roles.some(r => PROMOTE_ROLES.includes(r))) addTab('promote.html', 'bi-arrow-repeat', 'Promote/Repeat');
+if (roles.some(r => STAFF_ROLES.includes(r))) addTab('staff.html', 'bi-person-badge', 'Staff');
+if (roles.some(r => PARENT_ROLES.includes(r))) addTab('parents.html', 'bi-people-fill', 'Parents');
+if (roles.some(r => ASSIGNMENT_ROLES.includes(r))) addTab('assignments.html', 'bi-diagram-2', 'Assignment');
+if (roles.some(r => ASSIGNMENT_ROLES.includes(r))) addTab('cbt-manage.html', 'bi-laptop', 'CBT Tests');
+if (roles.some(r => ASSIGNMENT_ROLES.includes(r))) addTab('assignment-manage.html', 'bi-journal-text', 'Assignments');
+if (roles.some(r => SCORE_ROLES.includes(r))) addTab('scores.html', 'bi-pencil-square', 'Scores');
+if (roles.some(r => SCORE_ROLES.includes(r))) addTab('attendance.html', 'bi-calendar-check', 'Attendance');
+if (roles.some(r => RESULT_READ_ROLES.includes(r))) addTab('results.html', 'bi-file-earmark-text', 'Results');
+if (roles.some(r => FINANCE_ROLES.includes(r))) addTab('clearance.html', 'bi-cash-coin', 'Clearance');
+if (roles.some(r => PAYMENTS_PAGE_ROLES.includes(r))) addTab('payments.html', 'bi-receipt', 'Fee Payments', 'pendingPayBadge');
+if (roles.some(r => FINANCE_PAGE_ROLES.includes(r))) addTab('finance.html', 'bi-graph-up', 'Finance');
+addTab('reports.html', 'bi-bar-chart-line', 'Reports');
+if (roles.some(r => IDCARD_ROLES.includes(r))) addTab('idcards.html', 'bi-person-vcard', 'ID Cards');
+addTab('timetable.html', 'bi-calendar3', 'Timetable');
+addTab('announcements.html', 'bi-megaphone', 'Announcements');
+if (roles.some(r => PARENT_MSG_ROLES.includes(r))) addTab('communicate.html', 'bi-chat-dots', 'Parent Comms');
+addTab('messages.html', 'bi-envelope', 'Messages', 'unreadMsgBadge');
+addTab('manual.html', 'bi-book', 'Manual');
+
+/* Restore tab from URL hash on load (e.g. dashboard.html#students) — also for pages that have
+   no sidebar button of their own, like the Upgrade page. */
+const EXTRA_PAGES = ['upgrade.html'];
+function openFromHash(){
+  const h = window.location.hash.slice(1);
+  if (!h) { showTab('home'); return; }
+  const target = h + '.html';
+  const match = document.querySelector(`.tab-btn[data-page="${target}"]`);
+  if (match) showTab(target, match);
+  else if (EXTRA_PAGES.includes(target)) showTab(target);
+}
+if (window.location.hash) openFromHash();
+window.addEventListener('hashchange', openFromHash);
+
+/* Pages inside the frame have their own "← Dashboard" link — make it switch to the Home tab
+   instead of reloading the whole shell. */
+document.getElementById('contentFrame').addEventListener('load', () => {
+  try {
+    const doc = document.getElementById('contentFrame').contentDocument;
+    doc.addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('a[href]');
+      if (a && /^dashboard\.html(#.*)?$/i.test(a.getAttribute('href') || '')) { e.preventDefault(); showTab('home'); }
+    }, true);
+  } catch (e) { /* cross-origin frame — leave default behaviour */ }
+});
+
+/* Share the unified public Student/Parent Portal link — one link, tabs inside
+   route to Check Result / CBT Test / Pay Fees. Visible to anyone who could
+   share at least one of those three. */
+const anchorEl = document.getElementById('homeCardsAnchor');
+const CBT_SHARE_ROLES = [...SHARE_LINK_ROLES, 'Academic Officer / Exam Officer', 'Teacher'];
+const PORTAL_SHARE_ROLES = [...new Set([...SHARE_LINK_ROLES, ...CBT_SHARE_ROLES, ...FINANCE_ROLES])];
+if (roles.some(r => PORTAL_SHARE_ROLES.includes(r))) {
+  const box = document.createElement('div');
+  box.className = 'card-panel';
+  const basePath = window.location.pathname.replace(/dashboard\.html$/, '');
+  const portalUrl = `${window.location.origin}${basePath}portal.html?org=${session.orgId}`;
+  // Route through install.html first — matches the same "install before you can use it"
+  // gate every other public page and the staff login already use. install.html sends the
+  // visitor straight on to portalUrl once they've installed (or immediately, if their
+  // device is already running the installed app).
+  const installLink = `${window.location.origin}${basePath}install.html?returnTo=${encodeURIComponent(portalUrl)}`;
+  // Second link: shorter and easier to type or share, and it ALSO opens the install page first.
+  const shortLink = `${window.location.origin}${basePath}install.html?org=${encodeURIComponent(session.orgId)}`;
+  // Third link: straight to the portal with no install step (?direct=1 tells the portal pages to skip the install screen).
+  const directLink = `${portalUrl}&direct=1`;
+  box.innerHTML = `
+    <h2><i class="bi bi-link-45deg"></i> Public Student/Parent Portal Link</h2>
+    <div class="small text-muted mb-2">One link for students/parents — they'll choose Check Result, Assignments, CBT Test/Exam, or Pay Fees from tabs on the page. Confirmed payments and cleared results update automatically wherever they're checked.</div>
+
+    <label class="small fw-bold" style="color:#14213D;">Link 1 — Full link (opens the Install Page first)</label>
+    <div class="small text-muted mb-1">Recommended. First-time visitors can install the offline-friendly app, then they continue to the portal.</div>
+    <div class="input-group input-group-sm mb-3">
+      <input type="text" class="form-control" id="portalLinkInput" value="${installLink}" readonly>
+      <button class="btn btn-outline-secondary" id="copyPortalLinkBtn">Copy</button>
+    </div>
+
+    <label class="small fw-bold" style="color:#14213D;">Link 2 — Short link (also opens the Install Page)</label>
+    <div class="small text-muted mb-1">Same experience, but shorter: easy to paste into a WhatsApp group or print on a flyer.</div>
+    <div class="input-group input-group-sm mb-3">
+      <input type="text" class="form-control" id="portalShortLinkInput" value="${shortLink}" readonly>
+      <button class="btn btn-outline-secondary" id="copyPortalShortLinkBtn">Copy</button>
+    </div>
+
+    <label class="small fw-bold" style="color:#14213D;">Link 3 — Direct link (goes straight to the portal, no installation)</label>
+    <div class="small text-muted mb-1">Opens the portal at once in the browser. Best for a quick result check or for parents who do not want to install anything.</div>
+    <div class="input-group input-group-sm">
+      <input type="text" class="form-control" id="portalDirectLinkInput" value="${directLink}" readonly>
+      <button class="btn btn-outline-secondary" id="copyPortalDirectLinkBtn">Copy</button>
+    </div>`;
+  anchorEl.parentNode.insertBefore(box, anchorEl);
+  box.querySelector('#copyPortalLinkBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(installLink).then(() => window.smsSync && window.smsSync.toast ? window.smsSync.toast('Link copied') : alert('Link copied'));
+  });
+  box.querySelector('#copyPortalShortLinkBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(shortLink).then(() => window.smsSync && window.smsSync.toast ? window.smsSync.toast('Link copied') : alert('Link copied'));
+  });
+  box.querySelector('#copyPortalDirectLinkBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(directLink).then(() => window.smsSync && window.smsSync.toast ? window.smsSync.toast('Link copied') : alert('Link copied'));
+  });
+}
+
+/* Announcements preview, visible to everyone */
+loadAnnouncementsPreview();
+async function loadAnnouncementsPreview(){
+  try {
+    const anns = await window.smsSync.getRecords('announcement');
+    const visible = anns.filter(r => (r.payload.audience||[]).includes('Everyone') || (r.payload.audience||[]).some(a => roles.includes(a)));
+    visible.sort((a,b) => new Date(b.payload.createdAt||0) - new Date(a.payload.createdAt||0));
+    if (!visible.length) return;
+    const box = document.createElement('div');
+    box.className = 'card-panel';
+    box.innerHTML = `<h2><i class="bi bi-megaphone"></i> Latest Announcements</h2>` +
+      visible.slice(0,3).map(r => `<div class="small mb-2"><b>${escapeHtml(r.payload.title)}</b><br><span class="text-muted">${escapeHtml(r.payload.message).slice(0,120)}${r.payload.message.length>120?'…':''}</span></div>`).join('') +
+      `<a href="#" class="small" onclick="showTab('announcements.html');return false;">See all announcements →</a>`;
+    anchorEl.parentNode.insertBefore(box, anchorEl);
+  } catch (e) {}
+}
+
+/* ============================== HOME OVERVIEW: KPI CARDS + MINI CHART ============================== */
+/* Role-aware metrics computed from records already synced to this device (same source
+   reports.html uses). "Realtime" here means it re-renders right after every sync — on load,
+   on window.smsSync's sync-complete event, and on a 2-minute timer — matching the same
+   polling pattern sync.js already uses everywhere else in this app. There's no live push
+   channel in an Apps Script + Sheets backend, so this is the honest version of "automatic".*/
+function kpiCard(k){
+  const esc2 = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const clickable = k.go && document.querySelector(`.tab-btn[data-page="${k.go}"]`);
+  return `<div class="kpi-card kpi-${k.tone}" ${clickable ? `data-go="${k.go}" role="link" tabindex="0"` : ''} id="kpi-${k.id}"><div class="kpi-icon"><i class="bi ${k.icon}"></i></div><div class="kpi-value" ${String(k.value).length > 10 ? 'style="font-size:1.05rem;"' : (String(k.value).length > 8 ? 'style="font-size:1.2rem;"' : '')}>${esc2(k.value)}</div><div class="kpi-label">${esc2(k.label)}</div><div class="kpi-sub">${esc2(k.sub)}</div></div>`;
+}
+
+// Attendance can't travel through generic sync (it has its own safe action), so it is loaded here, at most every 2 minutes.
+let attCache = { at: 0, term: '', rows: null };
+async function loadAttendanceSummary(settings){
+  if (!roles.some(r => ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'].includes(r))) return null;
+  const key = (settings.currentTerm || '') + '|' + (settings.currentSession || '');
+  if (attCache.rows && attCache.term === key && Date.now() - attCache.at < 120000) return attCache.rows;
+  if (!navigator.onLine) return attCache.rows;
+  try {
+    const resp = await apiCall({ action: 'getAttendanceSummary', term: settings.currentTerm, session: settings.currentSession });
+    if (resp && resp.ok) { attCache = { at: Date.now(), term: key, rows: resp.summaries || [] }; return attCache.rows; }
+  } catch (e) {}
+  return attCache.rows;
+}
+
+function drawChart(el, c){
+  const s = c.spec, f = s.format === 'money' ? smsCharts.fmt.money : s.format === 'pct' ? (n => Math.round(n * 10) / 10 + '%') : smsCharts.fmt.num;
+  const common = { format: f, emptyText: s.emptyText, title: c.title };
+  if (c.type === 'bar') smsCharts.bar(el, { ...common, labels: s.labels, series: s.series });
+  else if (c.type === 'line') smsCharts.line(el, { ...common, labels: s.labels, series: s.series, min: s.min });
+  else if (c.type === 'hbar') smsCharts.hbar(el, { ...common, labels: s.labels, values: s.values, color: s.color, max: s.max });
+  else if (c.type === 'donut') smsCharts.donut(el, { ...common, labels: s.labels, values: s.values, colors: s.colors, center: s.center });
+}
+
+let homeBusy = false;
+async function renderHomeWidgets(){
+  if (homeBusy) return; homeBusy = true;
+  try {
+    const need = ['student','staff','feePayment','feeRecord','score','expense','incomeRecord','cbtTest','cbtSubmission','assignment','assignmentSubmission','announcement','timetableEntry','classTeacher','subjectAssignment'];
+    const [results, settingsRes] = await Promise.all([Promise.all(need.map(t => window.smsSync.getRecords(t))), window.smsSettings.getSettings().catch(() => ({ payload: {} }))]);
+    const data = {}; need.forEach((t, i) => data[t] = results[i]);
+    const settings = settingsRes.payload || {};
+    const attendance = await loadAttendanceSummary(settings);
+    const out = smsMetrics.build({ roles, userId: session.userId, plan: session.plan, now: new Date(), settings, data, attendance });
+
+    document.getElementById('kpiGrid').innerHTML = out.kpis.map(kpiCard).join('');
+    document.querySelectorAll('#kpiGrid .kpi-card[data-go]').forEach(el => {
+      const go = () => { const b = document.querySelector(`.tab-btn[data-page="${el.dataset.go}"]`); if (b) showTab(el.dataset.go, b); };
+      el.addEventListener('click', go); el.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    });
+
+    const grid = document.getElementById('insightGrid');
+    grid.innerHTML = out.charts.map(c => {
+      const clickable = c.go && document.querySelector(`.tab-btn[data-page="${c.go}"]`);
+      return `<div class="insight-card" id="chart-${c.id}"><div class="ic-head"><div><h3>${c.title}</h3><div class="ic-sub">${c.subtitle}</div></div>${clickable ? `<a href="#" class="ic-go" data-go="${c.go}">Open →</a>` : ''}</div><div class="ic-body"></div></div>`;
+    }).join('');
+    out.charts.forEach(c => drawChart(grid.querySelector(`#chart-${c.id} .ic-body`), c));
+    grid.querySelectorAll('.ic-go').forEach(a => a.addEventListener('click', e => { e.preventDefault(); const b = document.querySelector(`.tab-btn[data-page="${a.dataset.go}"]`); if (b) showTab(a.dataset.go, b); }));
+  } catch (e) { /* widgets are a nice-to-have — never block the rest of the dashboard on this */ }
+  finally { homeBusy = false; }
+}
+renderHomeWidgets();
+setInterval(renderHomeWidgets, 2*60*1000); // backup timer, matching sync.js's own background interval
+window.smsSync.onStatus(status => { if (status && !status.syncing) { renderHomeWidgets(); if (roles.some(r => PAYMENTS_PAGE_ROLES.includes(r))) loadPendingPaymentAlert(); } }); // refresh right after each sync completes
+document.addEventListener('visibilitychange', () => { if (!document.hidden) renderHomeWidgets(); });
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* Pending fee payment alerts, for the same roles that can act on them in payments.html */
+if (roles.some(r => PAYMENTS_PAGE_ROLES.includes(r))) {
+  loadPendingPaymentAlert();
+}
+async function refreshPendingBadge(){
+  try {
+    const payments = await window.smsSync.getRecords('feePayment');
+    const pending = payments.filter(r => r.payload.status === 'pending');
+    const badge = document.getElementById('pendingPayBadge');
+    if (badge) badge.innerHTML = pending.length ? ` <span class="badge bg-danger">${pending.length}</span>` : '';
+    return pending;
+  } catch (e) { return []; }
+}
+async function loadPendingPaymentAlert(){
+  try {
+    const pending = await refreshPendingBadge();
+    const old = document.getElementById('pendingAlertBox'); if (old) old.remove();
+    if (!pending.length) return;
+    const box = document.createElement('div');
+    box.className = 'card-panel';
+    box.id = 'pendingAlertBox';
+    box.innerHTML = `<h2><i class="bi bi-bell"></i> ${pending.length} Payment${pending.length===1?'':'s'} Awaiting Review</h2>` +
+      pending.slice(0,3).map(r => `<div class="small mb-1">${escapeHtml(r.payload.fullName)} — ${escapeHtml(r.payload.feeTypeName)}, ₦${Number(r.payload.declaredAmount).toLocaleString()} <span class="text-muted">(${escapeHtml(r.payload.paymentReference)})</span></div>`).join('') +
+      `<a href="#" class="small" onclick="showTab('payments.html');return false;">Review payments →</a>`;
+    anchorEl.parentNode.insertBefore(box, anchorEl);
+  } catch (e) {}
+}
+
+/* Unread staff messages badge — staff messages are deliberately not part of the generic
+   sync (the server blocks that type), so this asks the dedicated messaging action instead. */
+async function loadUnreadMessages(){
+  try {
+    if (!navigator.onLine) return;
+    const resp = await apiCall({ action:'listMyStaffMessages' });
+    if (!resp || !resp.ok) return;
+    const unread = resp.messages.filter(m =>
+      m.payload.fromUserId !== session.userId &&
+      (m.payload.toUserIds || []).includes(session.userId) &&
+      !((m.payload.readBy || []).includes(session.userId))
+    );
+    const badge = document.getElementById('unreadMsgBadge');
+    if (badge) badge.innerHTML = unread.length ? ` <span class="badge bg-danger">${unread.length}</span>` : '';
+  } catch (e) {}
+}
+loadUnreadMessages();
+setInterval(loadUnreadMessages, 2*60*1000);
+
+/* Teachers: show their own assignments and today's timetable right on the dashboard */
+if (roles.includes('Teacher')) {
+  loadMyAssignments();
+  loadMyTimetableToday();
+}
+async function loadMyTimetableToday(){
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const today = DAYS[new Date().getDay()];
+  if (today === 'Saturday' || today === 'Sunday') return; // no school timetable on weekends
+
+  const box = document.createElement('div');
+  box.className = 'card-panel';
+  box.innerHTML = `<h2><i class="bi bi-calendar3"></i> My Timetable Today (${today})</h2><div id="myTimetableBody" class="small text-muted">Loading…</div>`;
+  anchorEl.parentNode.insertBefore(box, anchorEl);
+
+  try {
+    const entries = await window.smsSync.getRecords('timetableEntry');
+    const mine = entries.filter(r => r.payload.teacherUserId === session.userId && r.payload.day === today);
+    mine.sort((a,b) => a.payload.period.localeCompare(b.payload.period, undefined, {numeric:true}));
+    const body = document.getElementById('myTimetableBody');
+    body.innerHTML = mine.length
+      ? mine.map(r => `<div class="small mb-1"><b>${r.payload.period}</b> — ${r.payload.subject} (${r.payload.class} ${r.payload.arm||''})</div>`).join('')
+      : 'No periods scheduled for you today.';
+  } catch (e) {
+    document.getElementById('myTimetableBody').textContent = 'Could not load timetable right now.';
+  }
+}
+async function loadMyAssignments(){
+  const box = document.createElement('div');
+  box.className = 'card-panel';
+  box.innerHTML = `<h2><i class="bi bi-diagram-2"></i> My Teaching Assignments</h2><div id="myAssignmentsBody" class="small text-muted">Loading…</div>`;
+  anchorEl.parentNode.insertBefore(box, anchorEl);
+
+  try {
+    const [classTeacherRecs, subjectRecs] = await Promise.all([
+      window.smsSync.getRecords('classTeacher'),
+      window.smsSync.getRecords('subjectAssignment')
+    ]);
+    const myForm = classTeacherRecs.filter(r => r.payload.teacherUserId === session.userId);
+    const mySubjects = subjectRecs.filter(r => r.payload.teacherUserId === session.userId);
+    const body = document.getElementById('myAssignmentsBody');
+    if (!myForm.length && !mySubjects.length){
+      body.textContent = 'No class or subject assignments yet — your school admin will assign these.';
+      return;
+    }
+    let html = '';
+    if (myForm.length){
+      html += '<div class="small fw-semibold mb-1">Form Teacher</div>';
+      html += myForm.map(r => `<div class="small mb-1">${r.payload.class}${r.payload.arm ? ' '+r.payload.arm : ''}</div>`).join('');
+    }
+    if (mySubjects.length){
+      html += '<div class="small fw-semibold mt-2 mb-1">Subjects</div>';
+      html += mySubjects.map(r => `<div class="small mb-1">${r.payload.subject} — ${r.payload.class}${r.payload.arm ? ' '+r.payload.arm : ''}</div>`).join('');
+    }
+    body.innerHTML = html;
+  } catch (e) {
+    document.getElementById('myAssignmentsBody').textContent = 'Could not load assignments right now.';
+  }
+}
+
+/* Logout */
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  try{ await apiCall({ action:'logout' }); }catch(e){}
+  localStorage.removeItem('sms_session');
+  localStorage.removeItem('sms_offline_cred');
+  window.location.href = 'login.html';
+});
+
+/* Change password */
+document.getElementById('pwForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const msg = document.getElementById('pwMsg');
+  if (!navigator.onLine){ msg.textContent = 'You need an internet connection to change your password.'; msg.className='small text-danger mt-2'; return; }
+  const cur = document.getElementById('currentPw').value;
+  const p1 = document.getElementById('newPw').value;
+  const p2 = document.getElementById('confirmPw').value;
+  if (p1 !== p2){ msg.textContent = 'New passwords do not match.'; msg.className='small text-danger mt-2'; return; }
+
+  document.getElementById('pwSaveBtn').disabled = true;
+  msg.textContent = 'Updating...'; msg.className='small text-muted mt-2';
+  try{
+    const currentPasswordHash = await sha256(cur);
+    const newPasswordHash = await sha256(p1);
+    const resp = await apiCall({ action:'changePassword', currentPasswordHash, newPasswordHash });
+    if (!resp.ok){ msg.textContent = resp.error; msg.className='small text-danger mt-2'; document.getElementById('pwSaveBtn').disabled = false; return; }
+    // Keep the cached offline credential in sync with the new password.
+    const cred = JSON.parse(localStorage.getItem('sms_offline_cred') || 'null');
+    if (cred){ cred.passwordHash = newPasswordHash; localStorage.setItem('sms_offline_cred', JSON.stringify(cred)); }
+    msg.textContent = 'Password updated.'; msg.className='small text-success mt-2';
+    document.getElementById('pwForm').reset();
+  }catch(err){
+    msg.textContent = 'Could not reach the server.'; msg.className='small text-danger mt-2';
+  }
+  document.getElementById('pwSaveBtn').disabled = false;
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+
+<script>
+function renderSyncStatus(detail){
+  const el = document.getElementById('syncStatusText');
+  const dotClass = detail.syncing ? 'syncing' : (detail.online ? 'online' : 'offline');
+  const label = detail.syncing ? 'Syncing…' : (detail.online ? 'Online' : 'Offline');
+  const pendingTxt = detail.pending ? ` — ${detail.pending} change${detail.pending===1?'':'s'} waiting to sync` : '';
+  const lastTxt = detail.lastSynced ? ` — last synced ${new Date(detail.lastSynced).toLocaleString()}` : '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span>${label}${pendingTxt}${lastTxt}`;
+}
+window.smsSync.onStatus(renderSyncStatus);
+document.getElementById('syncNowBtn').addEventListener('click', async ()=>{
+  const resp = await window.smsSync.syncNow();
+  if (!resp.ok) window.smsSync.toast(resp.error === 'Offline' ? "You're offline — will sync automatically when reconnected." : resp.error);
+});
+</script>
+<script src="pw-toggle.js"></script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Manage Users</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:900px;margin:0 auto;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);}
+  table{font-size:.88rem;}
+  th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .import-instructions{background:#FCF3DA;border:1px solid #E8D27A;border-radius:10px;padding:.9rem 1rem;font-size:.82rem;color:#5b5442;margin-bottom:1rem;}
+  .import-instructions code{background:#fff;border:1px solid #E8D27A;border-radius:4px;padding:.05rem .35rem;}
+  .import-instructions table{font-size:.78rem;margin-top:.5rem;}
+  .import-result{font-size:.82rem;white-space:pre-wrap;max-height:180px;overflow:auto;background:#FAF6EC;border-radius:8px;padding:.6rem;margin-top:.7rem;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> No internet connection — reconnect to continue.</div>
+
+<div class="wrap">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Manage Users</h1>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Back to Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <button class="btn btn-sm btn-outline-secondary" id="exportCsvBtn"><i class="bi bi-download"></i> Export CSV</button>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-upload"></i> Import CSV</button>
+      <button class="btn btn-sm btn-forest" data-bs-toggle="modal" data-bs-target="#userModal" id="newUserBtn">+ New User</button>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <table class="table" id="usersTable">
+      <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Roles</th><th>Status</th><th>Active</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- User modal (create/edit) -->
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="userModalTitle">New User</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="uf_userId">
+        <div class="mb-2"><label class="form-label small">Full Name</label><input class="form-control" id="uf_fullName" required></div>
+        <div class="mb-2"><label class="form-label small">Username</label><input class="form-control" id="uf_username" required></div>
+        <div class="mb-2"><label class="form-label small">Email</label><input type="email" class="form-control" id="uf_email"></div>
+        <div class="mb-2"><label class="form-label small">Roles</label>
+          <div id="uf_rolesBox" class="border rounded p-2" style="max-height:180px; overflow-y:auto;"></div>
+          <div class="form-text">A user can hold more than one role. Check as many as apply.</div>
+        </div>
+        <div class="mb-2" id="uf_schoolsWrap" style="display:none;">
+          <label class="form-label small">School(s) / Branch(es) this user can access</label>
+          <div id="uf_schoolsBox" class="border rounded p-2" style="max-height:140px; overflow-y:auto;"></div>
+          <div class="form-text">Only applies to non-Admin roles — Super Administrator/School Administrator always see every branch. Leave unchecked and this user won't see any branch-tagged students/staff.</div>
+        </div>
+        <div class="mb-2" id="uf_passwordWrap"><label class="form-label small">Password</label><input type="password" class="form-control" id="uf_password"></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="uf_active" checked><label class="form-check-label small" for="uf_active">Active</label></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-forest" id="uf_saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Set password modal -->
+<div class="modal fade" id="pwModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Set Password</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="pw_userId">
+        <p class="small text-muted">This immediately overwrites the user's password. No email is sent.</p>
+        <input type="password" class="form-control" id="pw_new" placeholder="New password" minlength="6">
+      </div>
+      <div class="modal-footer"><button class="btn btn-forest" id="pw_saveBtn">Set Password</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Import Users from CSV</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="import-instructions">
+          <strong>Required format</strong> — first row must be a header row with these exact column names (order doesn't matter, but names must match):
+          <table class="table table-sm table-bordered">
+            <thead><tr><th>Column</th><th>Required?</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>fullName</code></td><td>Yes</td><td>Full name of the user</td></tr>
+              <tr><td><code>username</code></td><td>Yes</td><td>Must be unique — duplicates are skipped</td></tr>
+              <tr><td><code>email</code></td><td>No</td><td>Needed only if this user will ever need password reset</td></tr>
+              <tr><td><code>roles</code></td><td>No</td><td>One or more roles separated by <code>;</code> (semicolon) — see valid role names below. Defaults to <code>Result Viewer / Parent Portal User</code> if left blank.</td></tr>
+              <tr><td><code>password</code></td><td>Yes</td><td>Plain text here — it's hashed in your browser before upload, never sent or stored in plain text</td></tr>
+            </tbody>
+          </table>
+          <div class="mb-1"><strong>Valid role names</strong> (use exactly, separated by <code>;</code> if assigning more than one):</div>
+          <ul class="mb-2" style="padding-left:1.1rem;">
+            <li><code>Super Administrator</code></li>
+            <li><code>School Administrator</code></li>
+            <li><code>Principal / Head Teacher</code></li>
+            <li><code>Academic Officer / Exam Officer</code></li>
+            <li><code>Teacher</code></li>
+            <li><code>Bursar / Accountant</code></li>
+            <li><code>Result Viewer / Parent Portal User</code></li>
+          </ul>
+          Example row: <code>Jane Doe,jane.doe,jane@school.com,"Teacher;Bursar / Accountant",TempPass123</code>
+          <div class="mt-2">
+            <a href="#" id="downloadTemplateLink">Download a blank CSV template</a>
+          </div>
+        </div>
+        <input type="file" class="form-control" id="csvFileInput" accept=".csv">
+        <div class="import-result" id="importResult" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-forest" id="importGoBtn">Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const API_URL = window.SMS_CONFIG.apiUrl;
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const ADMIN_TIER = ['Super Administrator','School Administrator'];
+if (!session || !(session.roles||[]).some(r => ADMIN_TIER.includes(r))){ window.top.location.href = 'login.html'; }
+
+const ALL_ROLES = [
+  'Super Administrator','School Administrator','Principal / Head Teacher',
+  'Academic Officer / Exam Officer','Teacher','Bursar / Accountant',
+  'Result Viewer / Parent Portal User'
+];
+function renderRoleCheckboxes(container, checkedRoles){
+  container.innerHTML = ALL_ROLES.map(r => `
+    <div class="form-check">
+      <input class="form-check-input role-cb" type="checkbox" value="${r}" id="cb_${r.replace(/[^a-zA-Z0-9]/g,'')}" ${checkedRoles.includes(r)?'checked':''}>
+      <label class="form-check-label small" for="cb_${r.replace(/[^a-zA-Z0-9]/g,'')}">${r}</label>
+    </div>`).join('');
+}
+function getCheckedRoles(container){
+  return Array.from(container.querySelectorAll('.role-cb:checked')).map(cb => cb.value);
+}
+
+let orgSchools = [];
+function renderSchoolCheckboxes(container, checkedIds){
+  if (!orgSchools.length){ document.getElementById('uf_schoolsWrap').style.display = 'none'; return; }
+  document.getElementById('uf_schoolsWrap').style.display = 'block';
+  container.innerHTML = orgSchools.map(s => `
+    <div class="form-check">
+      <input class="form-check-input school-cb" type="checkbox" value="${s.id}" id="sch_${s.id}" ${checkedIds.includes(s.id)?'checked':''}>
+      <label class="form-check-label small" for="sch_${s.id}">${s.name}</label>
+    </div>`).join('');
+}
+function getCheckedSchools(container){
+  return Array.from(container.querySelectorAll('.school-cb:checked')).map(cb => cb.value);
+}
+async function loadOrgSchools(){
+  const resp = await apiCall({ action:'getData', type:'settings' });
+  if (resp.ok && resp.records.length) orgSchools = resp.records[0].payload.schools || [];
+}
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function apiCall(payload){
+  const res = await fetch(API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  const data = await res.json();
+  if (!data.ok && /session/i.test(data.error||'')){ localStorage.removeItem('sms_session'); window.top.location.href='login.html'; }
+  return data;
+}
+
+async function loadUsers(){
+  const resp = await apiCall({ action:'listUsers' });
+  if (!resp.ok){ alert(resp.error); return; }
+  lastLoadedUsers = resp.users;
+  document.querySelector('#usersTable tbody').innerHTML = resp.users.map(u => `
+    <tr>
+      <td>${u.fullName}</td><td>${u.username}</td><td>${u.email||'—'}</td>
+      <td>${u.roles.map(r=>`<span class="badge bg-secondary" style="margin:1px;">${r}</span>`).join(' ')}</td>
+      <td>${u.subscriptionStatus}</td>
+      <td>${String(u.active).toUpperCase()==='TRUE' ? '✅' : '—'}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-secondary edit-btn" data-id="${u.userId}">Edit</button>
+        <button class="btn btn-sm ${String(u.active).toUpperCase()==='TRUE' ? 'btn-outline-warning' : 'btn-outline-success'} suspend-btn" data-id="${u.userId}" data-active="${String(u.active).toUpperCase()==='TRUE'}" ${u.userId===session.userId?'disabled title="You can\'t suspend your own account"':''}>${String(u.active).toUpperCase()==='TRUE' ? 'Suspend' : 'Activate'}</button>
+        <button class="btn btn-sm btn-outline-secondary pw-btn" data-id="${u.userId}">Set Password</button>
+        <button class="btn btn-sm btn-outline-danger del-btn" data-id="${u.userId}">Delete</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="7" class="text-center text-muted py-3">No users yet.</td></tr>';
+
+  document.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click', ()=>openEdit(b.dataset.id, resp.users)));
+  document.querySelectorAll('.suspend-btn').forEach(b=>b.addEventListener('click', async ()=>{
+    const isActive = b.dataset.active === 'true';
+    const user = lastLoadedUsers.find(u => u.userId === b.dataset.id);
+    if (!user) return;
+    if (isActive && !confirm(`Suspend ${user.fullName}? They won't be able to log in until reactivated.`)) return;
+    const r = await apiCall({ action:'editUser', targetUserId: b.dataset.id, fullName: user.fullName, email: user.email, roles: user.roles, active: !isActive, assignedSchoolIds: user.assignedSchoolIds || [] });
+    if (!r.ok) alert(r.error); else loadUsers();
+  }));
+  document.querySelectorAll('.pw-btn').forEach(b=>b.addEventListener('click', ()=>{
+    document.getElementById('pw_userId').value = b.dataset.id;
+    document.getElementById('pw_new').value = '';
+    new bootstrap.Modal(document.getElementById('pwModal')).show();
+  }));
+  document.querySelectorAll('.del-btn').forEach(b=>b.addEventListener('click', async ()=>{
+    if (!confirm('Delete this user? This cannot be undone.')) return;
+    const r = await apiCall({ action:'deleteUser', targetUserId: b.dataset.id });
+    if (!r.ok) alert(r.error); else loadUsers();
+  }));
+}
+
+document.getElementById('newUserBtn').addEventListener('click', ()=>{
+  document.getElementById('userModalTitle').textContent = 'New User';
+  ['uf_userId','uf_fullName','uf_username','uf_email','uf_password'].forEach(id=>document.getElementById(id).value='');
+  renderRoleCheckboxes(document.getElementById('uf_rolesBox'), []);
+  renderSchoolCheckboxes(document.getElementById('uf_schoolsBox'), []);
+  document.getElementById('uf_active').checked = true;
+  document.getElementById('uf_passwordWrap').style.display = 'block';
+});
+
+function openEdit(userId, users){
+  const u = users.find(x=>x.userId===userId);
+  document.getElementById('userModalTitle').textContent = 'Edit User';
+  document.getElementById('uf_userId').value = u.userId;
+  document.getElementById('uf_fullName').value = u.fullName;
+  document.getElementById('uf_username').value = u.username;
+  document.getElementById('uf_email').value = u.email;
+  renderRoleCheckboxes(document.getElementById('uf_rolesBox'), u.roles);
+  renderSchoolCheckboxes(document.getElementById('uf_schoolsBox'), u.assignedSchoolIds || []);
+  document.getElementById('uf_active').checked = String(u.active).toUpperCase()==='TRUE';
+  document.getElementById('uf_passwordWrap').style.display = 'none'; // edit uses Set Password action instead
+  new bootstrap.Modal(document.getElementById('userModal')).show();
+}
+
+document.getElementById('uf_saveBtn').addEventListener('click', async ()=>{
+  const userId = document.getElementById('uf_userId').value;
+  const fullName = document.getElementById('uf_fullName').value.trim();
+  const username = document.getElementById('uf_username').value.trim();
+  const email = document.getElementById('uf_email').value.trim();
+  const roles = getCheckedRoles(document.getElementById('uf_rolesBox'));
+  const assignedSchoolIds = getCheckedSchools(document.getElementById('uf_schoolsBox'));
+  const active = document.getElementById('uf_active').checked;
+  if (!roles.length){ alert('Select at least one role'); return; }
+  let resp;
+  if (userId){
+    resp = await apiCall({ action:'editUser', targetUserId:userId, fullName, email, roles, active, assignedSchoolIds });
+  } else {
+    const password = document.getElementById('uf_password').value;
+    if (!password || password.length < 6){ alert('Password must be at least 6 characters'); return; }
+    const passwordHash = await sha256(password);
+    resp = await apiCall({ action:'createUser', username, email, passwordHash, fullName, roles, assignedSchoolIds });
+  }
+  if (!resp.ok){ alert(resp.error); return; }
+  bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+  loadUsers();
+});
+
+document.getElementById('pw_saveBtn').addEventListener('click', async ()=>{
+  const targetUserId = document.getElementById('pw_userId').value;
+  const newPassword = document.getElementById('pw_new').value;
+  if (!newPassword || newPassword.length < 6){ alert('Password must be at least 6 characters'); return; }
+  const newPasswordHash = await sha256(newPassword);
+  const resp = await apiCall({ action:'setUserPassword', targetUserId, newPasswordHash });
+  if (!resp.ok){ alert(resp.error); return; }
+  bootstrap.Modal.getInstance(document.getElementById('pwModal')).hide();
+  alert('Password updated.');
+});
+
+/* ====== CSV EXPORT ====== */
+let lastLoadedUsers = [];
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  if (!lastLoadedUsers.length){ alert('No users to export.'); return; }
+  const cols = ['fullName','username','email','roles','subscriptionStatus','active','createdAt'];
+  const lines = [cols.join(',')];
+  lastLoadedUsers.forEach(u=>{
+    const row = { ...u, roles: (u.roles||[]).join(';') };
+    lines.push(cols.map(c => csvEscape(row[c])).join(','));
+  });
+  downloadCsv(lines.join('\n'), `users-export-${Date.now()}.csv`);
+});
+
+document.getElementById('downloadTemplateLink').addEventListener('click', (e)=>{
+  e.preventDefault();
+  const template = 'fullName,username,email,roles,password\nJane Doe,jane.doe,jane@school.com,Teacher;Bursar / Accountant,TempPass123';
+  downloadCsv(template, 'users-import-template.csv');
+});
+
+function csvEscape(val){
+  val = String(val ?? '');
+  if (/[",\n]/.test(val)) return '"' + val.replace(/"/g,'""') + '"';
+  return val;
+}
+function downloadCsv(content, filename){
+  const blob = new Blob([content], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* Minimal CSV parser — handles quoted fields with commas/newlines */
+function parseCsv(text){
+  const rows = []; let row = []; let field = ''; let inQuotes = false;
+  for (let i=0; i<text.length; i++){
+    const c = text[i], next = text[i+1];
+    if (inQuotes){
+      if (c === '"' && next === '"'){ field += '"'; i++; }
+      else if (c === '"'){ inQuotes = false; }
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ','){ row.push(field); field=''; }
+      else if (c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else if (c === '\r'){ /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length && r.some(v=>v.trim()!==''));
+}
+
+/* ====== CSV IMPORT ====== */
+document.getElementById('importGoBtn').addEventListener('click', async ()=>{
+  const fileInput = document.getElementById('csvFileInput');
+  const resultBox = document.getElementById('importResult');
+  const file = fileInput.files[0];
+  if (!file){ alert('Choose a CSV file first.'); return; }
+
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if (rows.length < 2){ alert('CSV has no data rows.'); return; }
+
+  const header = rows[0].map(h => h.trim());
+  const requiredCols = ['fullName','username','password'];
+  const missing = requiredCols.filter(c => !header.includes(c));
+  if (missing.length){
+    alert('Missing required column(s): ' + missing.join(', '));
+    return;
+  }
+
+  const dataRows = rows.slice(1);
+  const importRows = [];
+  for (const r of dataRows){
+    const obj = {};
+    header.forEach((h,i) => obj[h] = (r[i] || '').trim());
+    if (!obj.fullName || !obj.username || !obj.password) continue; // skip incomplete rows
+    const passwordHash = await sha256(obj.password);
+    const roles = (obj.roles || '').split(';').map(r=>r.trim()).filter(r=>ALL_ROLES.includes(r));
+    importRows.push({
+      fullName: obj.fullName, username: obj.username, email: obj.email || '',
+      roles, passwordHash
+    });
+  }
+  if (!importRows.length){ alert('No valid rows found.'); return; }
+
+  document.getElementById('importGoBtn').disabled = true;
+  const resp = await apiCall({ action:'bulkImportUsers', rows: importRows });
+  document.getElementById('importGoBtn').disabled = false;
+  if (!resp.ok){ alert(resp.error); return; }
+
+  resultBox.style.display = 'block';
+  resultBox.textContent =
+    `Created: ${resp.created.length}\n` +
+    (resp.created.length ? resp.created.join(', ') + '\n\n' : '\n') +
+    `Skipped: ${resp.skipped.length}\n` +
+    resp.skipped.map(s => `${s.username} — ${s.reason}`).join('\n');
+  loadUsers();
+});
+
+loadOrgSchools();
+loadUsers();
+</script>
+<script src="logout-lib.js"></script>
+<script src="pw-toggle.js"></script>
+</body>
+</html>

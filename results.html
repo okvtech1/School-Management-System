@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Results</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  table{font-size:.82rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .grade-badge{font-weight:700;padding:.15em .5em;border-radius:5px;font-size:.75rem;display:inline-block;}
+  .grade-A{background:#DFF3E4;color:#1E6B3A;} .grade-B{background:#E4F0FB;color:#1D5A9C;}
+  .grade-C{background:#FCF3DA;color:#8A6A12;} .grade-D{background:#FBE7DA;color:#A14E1B;}
+  .grade-E{background:#FBE7DA;color:#A14E1B;} .grade-F{background:#FADBDD;color:#8B1E3F;}
+
+  #sheetWrap{max-width:800px; width:100%; margin:0 auto; display:none;}
+  #sheetWrap .rs-outer{background:#e9e6dc;padding:0;border-radius:6px;}
+  .termedit-panel{background:#FAF6EC;border:1px solid #DCD0B4;border-radius:10px;padding:.9rem 1rem;margin-bottom:1rem;}
+  .termedit-panel h3{font-size:.85rem;font-weight:700;color:#14213D;margin-bottom:.6rem;}
+  .domain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.4rem .8rem;}
+  .domain-grid label{font-size:.75rem;color:#5b5442;display:block;margin-bottom:.15rem;}
+
+  #passcodeListWrap{display:none;}
+
+  /* ---- Passcode list + slips (A4 portrait) ---- */
+  .pc-doc{background:#fff;color:#1a1a1a;font-family:"Segoe UI",Arial,sans-serif;}
+  .pc-title{margin-top:6mm;background:var(--sch-primary);color:var(--sch-on-primary);text-align:center;font-weight:800;font-size:11pt;letter-spacing:.1em;padding:2.4mm 0;border-radius:1mm;}
+  .pc-meta{display:flex;gap:3mm;margin:4mm 0 5mm;flex-wrap:wrap;}
+  .pc-meta div{background:#f6f6f4;border:.25mm solid #d6d3c8;border-radius:1.2mm;padding:1.7mm 3mm;font-size:8.6pt;}
+  .pc-meta .k{display:block;font-size:5.9pt;letter-spacing:.09em;color:#6b6b6b;text-transform:uppercase;font-weight:700;margin-bottom:.6mm;}
+  .pc-meta .v{font-weight:700;}
+  .pc-table{width:100%;border-collapse:collapse;font-size:9.4pt;}
+  .pc-table th{background:var(--sch-primary);color:var(--sch-on-primary);font-size:7.4pt;letter-spacing:.06em;text-align:left;padding:2.2mm 3mm;}
+  .pc-table td{border-bottom:.25mm solid #d6d3c8;padding:2.6mm 3mm;}
+  .pc-table tr:nth-child(even) td{background:#f8f8f6;}
+  .pc-table td.pc-code{font-family:Consolas,"DejaVu Sans Mono",monospace;font-weight:800;letter-spacing:.22em;color:var(--sch-primary);font-size:11pt;}
+  .pc-note{margin-top:6mm;font-size:8pt;color:#555;line-height:1.5;border-left:1.2mm solid var(--sch-accent);padding:1mm 0 1mm 3mm;}
+  .pc-slips{display:grid;grid-template-columns:1fr 1fr;gap:5mm 6mm;margin-top:5mm;}
+  .pc-slip{border:.3mm dashed #888;border-radius:2mm;padding:3.6mm 4mm;break-inside:avoid;page-break-inside:avoid;}
+  .pc-slip .sch-lh{border-bottom-width:.6mm;padding-bottom:1.6mm;} .pc-slip .sch-lh::after{display:none;}
+  .pc-slip .sch-line,.pc-slip .sch-motto{display:none;} .pc-slip .sch-name{font-size:10.5pt;} .pc-slip .sch-lh.sch-compact .sch-logo{width:11mm;height:11mm;}
+  .pc-slip .who{margin-top:3mm;font-size:10pt;font-weight:800;color:#111;}
+  .pc-slip .cls{font-size:7.6pt;color:#555;margin-top:.6mm;}
+  .pc-slip .code{margin:3mm 0 2mm;text-align:center;background:var(--sch-tint);border:.3mm solid var(--sch-tint2);border-radius:1.4mm;padding:2.4mm 0;
+                 font-family:Consolas,"DejaVu Sans Mono",monospace;font-weight:800;font-size:17pt;letter-spacing:.3em;color:var(--sch-primary);}
+  .pc-slip .how{font-size:6.8pt;color:#555;line-height:1.45;}
+  .pc-slip .how b{color:#111;}
+
+  @media print {
+    @page{size:A4 portrait;margin:10mm;}
+    body{background:#fff !important;padding:0 !important;}
+    body *{visibility:hidden;}
+    #sheetWrap, #sheetWrap *{visibility:visible;}
+    #sheetWrap{position:absolute; left:0; top:0; max-width:none; width:auto;}
+    #passcodeListWrap.print-active, #passcodeListWrap.print-active *{visibility:visible;}
+    #passcodeListWrap.print-active{position:absolute; left:0; top:0; display:block; width:190mm; max-width:none; padding:0;}
+    .no-print{display:none !important;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — showing last synced scores.</div>
+
+<div class="wrap">
+  <div class="topline no-print">
+    <h1>Results</h1>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <button class="btn btn-sm btn-outline-secondary" id="backToListBtn" style="display:none;">← Back to List</button>
+      <button class="btn btn-sm btn-forest" id="pdfBtn" style="display:none;"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+      <button class="btn btn-sm btn-outline-secondary" id="printBtn" style="display:none;"><i class="bi bi-printer"></i> Print</button>
+    </div>
+  </div>
+
+  <div class="card-panel no-print" id="pickerCard">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small">Class</label>
+        <select class="form-select form-select-sm" id="classSelect"></select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small">Arm</label>
+        <select class="form-select form-select-sm" id="armSelect"></select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small">Report</label>
+        <select class="form-select form-select-sm" id="termSelect">
+          <option value="First Term">First Term</option>
+          <option value="Second Term">Second Term</option>
+          <option value="Third Term">Third Term</option>
+          <option value="yearly">Yearly Cumulative</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small">Session</label>
+        <input class="form-control form-control-sm" id="sessionInput" style="max-width:140px;">
+      </div>
+      <div class="col-auto" id="examOfficerTools" style="display:none;">
+        <button class="btn btn-sm btn-outline-secondary" id="genPasscodesBtn"><i class="bi bi-key"></i> Print Passcodes</button>
+        <button class="btn btn-sm btn-outline-secondary" id="genSlipsBtn"><i class="bi bi-scissors"></i> Print Cut-out Slips</button>
+        <button class="btn btn-sm btn-outline-danger" id="genNewCodesBtn" title="Replace every code for this class, term and session"><i class="bi bi-arrow-repeat"></i> New codes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-panel no-print" id="listCard">
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead><tr><th>Student</th><th>Subjects Scored</th><th>Average</th><th>Grade</th><th></th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Attendance + Domain Ratings entry, shown above a term sheet (not for Yearly) -->
+  <div class="termedit-panel no-print" id="termEditPanel" style="display:none;">
+    <h3><i class="bi bi-pencil-square"></i> Attendance &amp; Behavioral Ratings — editable, saved separately from scores</h3>
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <label class="form-label small">Times Present (out of the term's times-opened, set in Settings)</label>
+        <input type="number" min="0" class="form-control form-control-sm" id="te_timesPresent">
+      </div>
+    </div>
+    <div class="domain-grid mb-2" id="domainInputs"></div>
+    <button class="btn btn-sm btn-outline-secondary" id="saveTermInfoBtn">Save Attendance &amp; Ratings</button>
+    <span id="termInfoMsg" class="small ms-2"></span>
+  </div>
+</div>
+
+<div id="sheetWrap"></div>
+
+<!-- Printable passcode list -->
+<div id="passcodeListWrap" class="wrap">
+  <div class="card-panel">
+    <h2 style="font-size:1rem;font-weight:700;color:#14213D;">Result Check Passcodes — <span id="pcListMeta"></span></h2>
+    <table class="table table-sm">
+      <thead><tr><th>Student</th><th>Admission No.</th><th>Passcode</th></tr></thead>
+      <tbody id="pcListBody"></tbody>
+    </table>
+    <div class="small text-muted no-print">Students select their class, term, and session on the public portal's "Class + Passcode" tab, then enter this code.</div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="results-lib.js"></script>
+<script src="print-lib.js"></script>
+<script src="report-lib.js"></script>
+<script src="pdf-download.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const READ_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher'];
+const EXAM_OFFICER_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => READ_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+const canGeneratePasscodes = roles.some(r => EXAM_OFFICER_ROLES.includes(r));
+if (canGeneratePasscodes) document.getElementById('examOfficerTools').style.display = 'block';
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  return res.json();
+}
+
+let settingsState = null;
+let students = [];
+let allScores = [];
+let classTeachers = [];
+let allTermInfo = [];
+let currentStudentId = null;
+
+function fillArmSelect(){
+  const cls = document.getElementById('classSelect').value;
+  const arms = (settingsState.classArms||{})[cls] || [];
+  document.getElementById('armSelect').innerHTML = arms.length
+    ? arms.map(a=>`<option value="${a}">${a}</option>`).join('')
+    : '<option value="">(no arms)</option>';
+}
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsState = payload;
+  document.getElementById('sessionInput').value = settingsState.currentSession || '';
+  document.getElementById('termSelect').value = settingsState.currentTerm || 'First Term';
+  document.getElementById('classSelect').innerHTML = (settingsState.classes||[]).map(c=>`<option value="${c}">${c}</option>`).join('');
+  fillArmSelect();
+  document.getElementById('classSelect').addEventListener('change', () => { fillArmSelect(); loadClass(); });
+  document.getElementById('armSelect').addEventListener('change', loadClass);
+  document.getElementById('termSelect').addEventListener('change', loadClass);
+  document.getElementById('sessionInput').addEventListener('change', loadClass);
+
+  allScores = await window.smsSync.getRecords('score');
+  classTeachers = await window.smsSync.getRecords('classTeacher');
+  preloadTeacherNames();   // class teacher's name for the signature line (best-effort, online)
+  allTermInfo = await window.smsSync.getRecords('studentTermInfo');
+  await loadClass();
+}
+
+async function loadClass(){
+  const cls = document.getElementById('classSelect').value;
+  const arm = document.getElementById('armSelect').value;
+  const allStudents = await window.smsSync.getRecords('student');
+  students = allStudents.filter(r => r.payload.class === cls && (r.payload.arm||'') === (arm||'') && r.payload.active !== false);
+  renderList(cls, arm);
+}
+
+const TERM_NAMES = ['First Term','Second Term','Third Term'];
+function isYearlyMode(){ return document.getElementById('termSelect').value === 'yearly'; }
+
+function scoresForTerm(studentId, term, session){
+  return allScores.filter(r => r.payload.studentId === studentId && r.payload.term === term && r.payload.session === session).map(r => r.payload);
+}
+function subjectTotalsYearly(studentId, session){
+  const bySubject = {};
+  TERM_NAMES.forEach(t => scoresForTerm(studentId, t, session).forEach(sc => {
+    if (!bySubject[sc.subject]) bySubject[sc.subject] = { name: sc.subject, term1Total:0, term2Total:0, term3Total:0 };
+    if (t==='First Term') bySubject[sc.subject].term1Total = sc.total;
+    if (t==='Second Term') bySubject[sc.subject].term2Total = sc.total;
+    if (t==='Third Term') bySubject[sc.subject].term3Total = sc.total;
+  }));
+  return Object.values(bySubject).map(s => {
+    const total300 = s.term1Total+s.term2Total+s.term3Total;
+    const avg = total300/3;
+    return { ...s, total300, average: Math.round(avg*100)/100, remark: window.smsResults.overallComment(avg) };
+  });
+}
+
+function renderList(cls, arm){
+  const body = document.getElementById('listBody');
+  const session = document.getElementById('sessionInput').value.trim();
+  const yearly = isYearlyMode();
+  document.getElementById('termEditPanel').style.display = yearly ? 'none' : 'block';
+
+  body.innerHTML = students.map(s => {
+    let avg, subjCount;
+    if (yearly) {
+      const subs = subjectTotalsYearly(s.recordId, session);
+      subjCount = subs.length;
+      avg = subjCount ? subs.reduce((sum,x)=>sum+x.total300,0)/subjCount : 0;
+    } else {
+      const scores = scoresForTerm(s.recordId, document.getElementById('termSelect').value, session);
+      subjCount = scores.length;
+      avg = window.smsResults.average(scores);
+    }
+    const { grade } = window.smsResults.gradeFor(avg, window.smsResults.normMethod(settingsState.gradingMethod));
+    return `<tr>
+      <td>${s.payload.fullName}</td><td>${subjCount}</td><td>${subjCount ? avg.toFixed(2) : '—'}</td>
+      <td>${subjCount ? `<span class="grade-badge grade-${window.smsResults.gradeClass(grade)}">${grade}</span>` : '—'}</td>
+      <td class="text-end"><button class="btn btn-sm btn-outline-secondary view-btn" data-id="${s.recordId}" ${!subjCount?'disabled':''}>View / Print</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">No students in this class/arm.</td></tr>';
+
+  body.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', () => showSheet(b.dataset.id, cls, arm)));
+}
+
+function teacherLabel(userId){ return teacherCache && teacherCache[userId] ? teacherCache[userId] : userId; }
+
+function showSheet(studentId, cls, arm){
+  currentStudentId = studentId;
+  const student = students.find(s => s.recordId === studentId);
+  const session = document.getElementById('sessionInput').value.trim();
+  const yearly = isYearlyMode();
+  const ct = classTeachers.find(r => r.payload.class === cls && (r.payload.arm||'') === (arm||''));
+  const section = (settingsState.classSections||{})[cls] || '';
+
+  let subjects, caCount, overallTotal, average, term;
+  if (yearly) {
+    subjects = subjectTotalsYearly(studentId, session);
+    caCount = null;
+    overallTotal = subjects.reduce((s,x)=>s+x.total300,0);
+    average = subjects.length ? overallTotal/subjects.length : 0;
+    term = 'Yearly Cumulative';
+  } else {
+    term = document.getElementById('termSelect').value;
+    const scores = scoresForTerm(studentId, term, session);
+    const method = window.smsResults.normMethod(settingsState.gradingMethod);
+    subjects = scores.map(sc => window.smsResults.regrade({ name: sc.subject, ca: sc.ca||[], examScore: sc.exam, total: sc.total }, method));
+    caCount = subjects.length ? subjects[0].ca.length : (settingsState.caCounts && settingsState.caCounts[section]) || 2;
+    overallTotal = subjects.reduce((s,x)=>s+Number(x.total||0),0);
+    average = subjects.length ? overallTotal/subjects.length : 0;
+  }
+  const percentage = Math.round(average);
+  const comment = window.smsResults.overallComment(average);
+
+  // Position within class for this term/session
+  const classmateAverages = students.map(st => {
+    let a;
+    if (yearly) { const subs = subjectTotalsYearly(st.recordId, session); a = subs.length ? subs.reduce((s,x)=>s+x.total300,0)/subs.length : -1; }
+    else { const sc = scoresForTerm(st.recordId, term, session); a = sc.length ? window.smsResults.average(sc) : -1; }
+    return { id: st.recordId, avg: a };
+  }).filter(x => x.avg >= 0).sort((a,b) => b.avg - a.avg);
+  const position = classmateAverages.findIndex(x => x.id === studentId) + 1;
+
+  // Attendance + domain ratings (Yearly uses Third Term's entry, matching the public flow)
+  const infoTerm = yearly ? 'Third Term' : term;
+  const tiRow = allTermInfo.find(r => r.payload.studentId===studentId && r.payload.term===infoTerm && r.payload.session===session);
+  const ti = tiRow ? tiRow.payload : {};
+  const termMeta = (settingsState.termInfo||{})[`${infoTerm}|${session}`] || {};
+  const domains = window.smsResults.DOMAIN_LIST.map(name => ({ name, rating: (ti.domainRatings||{})[name] || '' }));
+
+  const feeTypes = (window._feeTypesCache || []);
+  const feeRec = (window._feeRecordsCache || []).find(r => r.payload.studentId===studentId && r.payload.term===term && r.payload.session===session);
+  const outstandingBill = Math.max(0, (feeTypes.reduce((s,f)=>s+Number(f.amount||0),0)) - (feeRec ? Number(feeRec.payload.amountPaid||0) : 0));
+  const totalBill = feeTypes.reduce((s,f)=>s+Number(f.amount||0),0);
+
+  window.smsReport.renderSheet(document.getElementById('sheetWrap'), {
+    school: settingsState, gradingMethod: window.smsResults.normMethod(settingsState.gradingMethod),
+    reportType: yearly ? 'yearly' : ({'First Term':'first','Second Term':'second','Third Term':'third'})[term], section,
+    student: { fullName: student.payload.fullName, admissionNo: student.payload.admissionNo, class: cls, arm, gender: student.payload.gender, dob: student.payload.dob, photo: student.payload.photo, noInClass: students.length },
+    term, session,
+    attendance: { timesPresent: ti.timesPresent||0, timesAbsent: Math.max(0,(termMeta.timesSchoolOpened||0)-(ti.timesPresent||0)), timesSchoolOpened: termMeta.timesSchoolOpened||0, closingDate: termMeta.closingDate, resumptionDate: termMeta.resumptionDate },
+    caCount, subjects,
+    overallTotal, average: Math.round(average*100)/100, percentage, position,
+    domains,
+    bill: feeTypes.map(f=>({name:f.name, amount:f.amount})), outstandingBill, totalBill,
+    classTeacherRemark: comment, headTeacherRemark: comment,
+    classTeacherName: (function(){ const ct = classTeachers.find(c => c.payload.class === cls && (c.payload.arm||'') === (arm||'')); return ct && teacherCache ? (teacherCache[ct.payload.teacherUserId] || '') : ''; })(),
+    principalName: settingsState.principalName, principalSignature: settingsState.principalSignature
+  });
+
+  if (!yearly) {
+    document.getElementById('te_timesPresent').value = ti.timesPresent || '';
+    document.getElementById('domainInputs').innerHTML = window.smsResults.DOMAIN_LIST.map(name => `
+      <div>
+        <label>${name}</label>
+        <select class="form-select form-select-sm domain-rate" data-domain="${name}">
+          <option value="">—</option>
+          ${window.smsResults.RATING_SCALE.map(r => `<option value="${r.value}" ${String(ti.domainRatings&&ti.domainRatings[name])===String(r.value)?'selected':''}>${r.value} - ${r.label}</option>`).join('')}
+        </select>
+      </div>`).join('');
+    document.getElementById('termEditPanel').style.display = 'block';
+  } else {
+    document.getElementById('termEditPanel').style.display = 'none';
+  }
+
+  document.getElementById('sheetWrap').style.display = 'block';
+  document.getElementById('pickerCard').style.display = 'none';
+  document.getElementById('listCard').style.display = 'none';
+  document.getElementById('printBtn').style.display = 'inline-block';
+  document.getElementById('pdfBtn').style.display = 'inline-block';
+  document.getElementById('backToListBtn').style.display = 'inline-block';
+  document.getElementById('sheetWrap').scrollIntoView({ behavior:'smooth' });
+}
+
+document.getElementById('saveTermInfoBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('termInfoMsg');
+  const term = document.getElementById('termSelect').value;
+  const session = document.getElementById('sessionInput').value.trim();
+  const timesPresent = Number(document.getElementById('te_timesPresent').value) || 0;
+  const domainRatings = {};
+  document.querySelectorAll('.domain-rate').forEach(sel => { if (sel.value) domainRatings[sel.dataset.domain] = Number(sel.value); });
+
+  const existing = allTermInfo.find(r => r.payload.studentId===currentStudentId && r.payload.term===term && r.payload.session===session);
+  const payload = { studentId: currentStudentId, term, session, timesPresent, domainRatings };
+  const newId = await window.smsSync.saveRecord('studentTermInfo', payload, existing ? existing.recordId : null);
+  if (existing) existing.payload = payload; else allTermInfo.push({ recordId:newId, type:'studentTermInfo', payload });
+  msg.textContent = 'Saved.'; msg.className = 'small ms-2 text-success';
+  setTimeout(()=>{ msg.textContent=''; }, 2000);
+});
+
+document.getElementById('backToListBtn').addEventListener('click', () => {
+  document.getElementById('sheetWrap').style.display = 'none';
+  document.getElementById('pickerCard').style.display = 'block';
+  document.getElementById('listCard').style.display = 'block';
+  document.getElementById('printBtn').style.display = 'none';
+  document.getElementById('pdfBtn').style.display = 'none';
+  document.getElementById('backToListBtn').style.display = 'none';
+  document.getElementById('termEditPanel').style.display = 'none';
+});
+
+let teacherCache = null;
+async function preloadTeacherNames(){
+  try{
+    const res = await fetch(window.SMS_API_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'listOrgUsersBasic', sessionToken: session.sessionToken })
+    });
+    const data = await res.json();
+    if (data.ok){ teacherCache = {}; data.users.forEach(u => teacherCache[u.userId] = u.fullName); }
+  }catch(e){}
+}
+async function preloadFeeInfo(){
+  try{
+    window._feeTypesCache = (await window.smsSync.getRecords('feeType')).map(r=>r.payload);
+    window._feeRecordsCache = await window.smsSync.getRecords('feeRecord');
+  }catch(e){ window._feeTypesCache = []; window._feeRecordsCache = []; }
+}
+
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+document.getElementById('pdfBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('pdfBtn'); btn.disabled = true;
+  const sel = document.querySelector('#sheetWrap .rs-info .v');
+  const name = 'Result-' + ((sel && sel.textContent) || 'student') + '-' + document.getElementById('termSelect').value + '-' + document.getElementById('sessionInput').value.replace('/', '-');
+  const out = await window.smsPdf.downloadPaper(document.querySelector('#sheetWrap .rs-paper'), name, { title: name });
+  btn.disabled = false;
+  if (!out.ok) alert('Could not make the PDF here. Use Print and choose Save as PDF instead.\n\n' + out.error);
+});
+
+/* ============================== PASSCODE GENERATION (Exam Officer / Admin-tier) ============================== */
+// mode 'list' = one A4 page list for the exam office; 'slips' = cut-out slips to hand to each student.
+async function printPasscodes(mode, regenerate){
+  const classFilter = document.getElementById('classSelect').value;
+  const arm = document.getElementById('armSelect').value;
+  const term = document.getElementById('termSelect').value === 'yearly' ? 'Yearly Cumulative' : document.getElementById('termSelect').value;
+  const sess = document.getElementById('sessionInput').value.trim();
+  if (!sess){ alert('Enter a session first.'); return; }
+
+  const resp = await apiCall({ action:'generateResultPasscodes', classFilter, arm, term, session: sess, regenerate: regenerate === true });
+  if (!resp.ok){ alert(resp.error); return; }
+  resp.results = resp.students || resp.results || [];
+
+  const b = window.smsPrint.brand(settingsState);
+  window.smsPrint.applyTheme(b);
+  const esc = window.smsPrint.esc;
+  const clsLabel = `${classFilter} ${arm||''}`.trim();
+  const portal = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}portal.html?org=${encodeURIComponent((window.smsGetSession ? smsGetSession() : JSON.parse(localStorage.getItem('sms_session')||'{}')).orgId || '')}`;
+  let body;
+  if (mode === 'slips') {
+    body = `<div class="pc-slips">` + resp.results.map(r => `
+      <div class="pc-slip">
+        ${window.smsPrint.letterhead(b, { compact: true, right: '' })}
+        <div class="who">${esc(r.fullName)}</div>
+        <div class="cls">${esc(clsLabel)} &nbsp;&middot;&nbsp; ${esc(term)} &nbsp;&middot;&nbsp; ${esc(sess)} &nbsp;&middot;&nbsp; Adm. no. ${esc(r.admissionNo || '-')}</div>
+        <div class="code">${esc(r.passcode)}</div>
+        <div class="how"><b>How to check your result:</b> open ${esc(portal)}, choose <b>Check Result</b>, select the session, term and class, then type the passcode above. Keep this code private.</div>
+      </div>`).join('') + `</div>`;
+  } else {
+    body = `<div class="pc-title">RESULT CHECK PASSCODES</div>
+      <div class="pc-meta">
+        <div><span class="k">Class</span><span class="v">${esc(clsLabel)}</span></div>
+        <div><span class="k">Term</span><span class="v">${esc(term)}</span></div>
+        <div><span class="k">Session</span><span class="v">${esc(sess)}</span></div>
+        <div><span class="k">Students</span><span class="v">${resp.results.length}</span></div>
+      </div>
+      <table class="pc-table"><thead><tr><th style="width:12mm;">#</th><th>Student name</th><th>Admission no.</th><th>Passcode</th></tr></thead><tbody>
+        ${resp.results.map((r,i) => `<tr><td>${i+1}</td><td>${esc(r.fullName)}</td><td>${esc(r.admissionNo||'-')}</td><td class="pc-code">${esc(r.passcode)}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="pc-note"><b>Confidential.</b> Give each student only their own passcode. To check a result, the student opens the school portal, chooses Check Result, selects the session, term and class, and types the passcode.</div>`;
+  }
+  const wrap = document.getElementById('passcodeListWrap');
+  wrap.innerHTML = `<div class="pc-doc">${window.smsPrint.letterhead(b, { showEmptyLogo: false })}${body}${window.smsPrint.footer(b, 'Printed ' + esc(new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })))}</div>`;
+  wrap.classList.add('print-active');
+  wrap.style.display = 'block';
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { wrap.classList.remove('print-active'); wrap.style.display = 'none'; }, 500);
+  }, 250);
+}
+document.getElementById('genPasscodesBtn').addEventListener('click', () => printPasscodes('list'));
+document.getElementById('genSlipsBtn').addEventListener('click', () => printPasscodes('slips'));
+document.getElementById('genNewCodesBtn').addEventListener('click', () => {
+  if (!confirm('Issue NEW passcodes for this class, term and session?\n\nEvery passcode already given to these students will stop working. Use this only if codes were leaked or lost in bulk.')) return;
+  printPasscodes('slips', true);
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+preloadTeacherNames().then(() => preloadFeeInfo()).then(loadAll);
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

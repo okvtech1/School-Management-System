@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Backup</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:760px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .note{background:#FCF3DA;border:1px solid #E8D27A;border-radius:10px;padding:.8rem 1rem;font-size:.85rem;color:#5b5442;}
+  ol.steps{padding-left:1.2rem;font-size:.88rem;}
+  ol.steps li{margin-bottom:.5rem;}
+  .stat-row{display:flex;gap:1.5rem;margin:.75rem 0;flex-wrap:wrap;}
+  .stat{background:#F1E7D3;border-radius:10px;padding:.6rem 1rem;text-align:center;}
+  .stat .n{font-size:1.2rem;font-weight:800;color:#14213D;}
+  .stat .l{font-size:.68rem;color:#7a7259;text-transform:uppercase;letter-spacing:.05em;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — connect to the internet to generate a backup (this reads live from the server, not the local cache, so it's always complete).</div>
+
+<div class="wrap">
+  <div class="topline">
+    <h1>Backup</h1>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+  </div>
+
+  <div class="card-panel">
+    <h2><i class="bi bi-cloud-arrow-down"></i> Download a Full Backup</h2>
+    <p class="small">This pulls every record your organization has stored — students, staff, scores, fee payments, CBT tests, assignments, announcements, timetable, and more — directly from the server (not just what's cached on this device), so it's always a complete, up-to-date snapshot.</p>
+
+    <button class="btn btn-forest" id="generateBtn"><i class="bi bi-arrow-repeat"></i> Generate Backup</button>
+    <div class="stat-row" id="statRow" style="display:none;">
+      <div class="stat"><div class="n" id="stat_records">0</div><div class="l">Records</div></div>
+      <div class="stat"><div class="n" id="stat_users">0</div><div class="l">Users</div></div>
+      <div class="stat"><div class="n" id="stat_types">0</div><div class="l">Record Types</div></div>
+    </div>
+    <div id="downloadButtons" style="display:none;" class="mt-2">
+      <button class="btn btn-outline-secondary btn-sm" id="downloadJsonBtn"><i class="bi bi-filetype-json"></i> Download JSON (full fidelity)</button>
+      <button class="btn btn-outline-secondary btn-sm" id="downloadCsvBtn"><i class="bi bi-filetype-csv"></i> Download CSV (flat, readable)</button>
+    </div>
+    <div id="genMsg" class="small mt-2"></div>
+  </div>
+
+  <div class="card-panel" id="archivePanel">
+    <h2><i class="bi bi-archive"></i> Archived Records</h2>
+    <p class="small">To keep your system fast, old records move automatically to your private archive spreadsheet: scores, term details and result passcodes older than two years (never the current session), promotion history after two years, announcements after a year, assignments and CBT tests with their submissions after about six months, and daily attendance after about four months. Nothing is deleted. Old results still open through the public result check, and you can bring any archived records back here.</p>
+    <button class="btn btn-outline-secondary btn-sm" id="archiveRefreshBtn"><i class="bi bi-arrow-repeat"></i> Check archive</button>
+    <div id="archiveSummary" class="small mt-2 text-muted">Not loaded yet.</div>
+    <div id="restoreBox" style="display:none;" class="mt-3">
+      <div class="small fw-bold mb-1" style="color:#14213D;">Restore archived records to the live system</div>
+      <div class="row g-2">
+        <div class="col-12 col-md-5"><select id="restoreType" class="form-select form-select-sm"></select></div>
+        <div class="col-12 col-md-4"><select id="restoreSession" class="form-select form-select-sm"><option value="">All sessions</option></select></div>
+        <div class="col-12 col-md-3"><button class="btn btn-sm btn-forest w-100" id="restoreBtn">Restore</button></div>
+      </div>
+      <div class="small text-muted mt-1">Restored records appear on every device after its next sync, and stay live for another full retention period.</div>
+      <div id="restoreMsg" class="small mt-1"></div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <h2><i class="bi bi-info-circle"></i> Instructions</h2>
+    <ol class="steps">
+      <li><strong>JSON</strong> is the complete, exact copy of every record — this is what you'd hand to OKV Technology (or any developer) to fully restore or migrate your data. Keep it somewhere safe (Google Drive, email to yourself, a USB drive).</li>
+      <li><strong>CSV</strong> is a flat, spreadsheet-friendly copy — one row per record, with each record's details packed into a single "Details" column as text. It's easy to open in Excel/Google Sheets to eyeball your data, but it's not meant to be re-imported directly.</li>
+      <li><strong>To restore individual data types</strong> (Students, Staff, etc.) day-to-day, use the <strong>CSV Import</strong> button already on each of those pages — it accepts the same column layout you'd export from there. This Backup tab is for a full, whole-organization safety copy, not routine data entry.</li>
+      <li><strong>Restoring a full JSON backup</strong> (e.g. after moving to a new plan, or in a disaster-recovery situation) isn't self-service yet — contact OKV Technology with the JSON file and they can load it back into a fresh copy of your organization's spreadsheet.</li>
+      <li>We'd suggest generating a fresh backup every so often — right after a busy exam period, end of term, or before any big data cleanup — so you always have a recent copy.</li>
+    </ol>
+    <div class="note">Passwords are never included in a backup — user accounts export with name/username/email/roles only. If you ever need to restore users, they'll need to reset their password afterward via "Forgot password" on the login page.</div>
+  </div>
+</div>
+
+<script src="csv-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const ADMIN_TIER = ['Super Administrator','School Administrator'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => ADMIN_TIER.includes(r))){ window.top.location.href = 'dashboard.html'; }
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method: 'POST', headers: {'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  return res.json();
+}
+
+let lastBackup = null;
+
+document.getElementById('generateBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('generateBtn');
+  const msg = document.getElementById('genMsg');
+  btn.disabled = true; msg.textContent = 'Generating…'; msg.className = 'small text-muted mt-2';
+  try {
+    const resp = await apiCall({ action: 'exportBackup' });
+    if (!resp.ok){ msg.textContent = resp.error; msg.className = 'small text-danger mt-2'; btn.disabled = false; return; }
+    lastBackup = resp;
+    document.getElementById('stat_records').textContent = resp.records.length;
+    document.getElementById('stat_users').textContent = resp.users.length;
+    document.getElementById('stat_types').textContent = new Set(resp.records.map(r=>r.type)).size;
+    document.getElementById('statRow').style.display = 'flex';
+    document.getElementById('downloadButtons').style.display = 'block';
+    msg.textContent = `Backup ready — generated ${new Date(resp.exportedAt).toLocaleString()}.`;
+    msg.className = 'small text-success mt-2';
+  } catch (err) {
+    msg.textContent = 'Could not reach the server. Check your connection.'; msg.className = 'small text-danger mt-2';
+  }
+  btn.disabled = false;
+});
+
+function downloadJson(obj, filename){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('downloadJsonBtn').addEventListener('click', () => {
+  if (!lastBackup) return;
+  downloadJson(lastBackup, `backup_${(lastBackup.orgName||'org').replace(/\s+/g,'-')}_${lastBackup.exportedAt.slice(0,10)}.json`);
+});
+document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+  if (!lastBackup) return;
+  const header = ['Kind','RecordId/UserId','Type/Role','CreatedAt','Details'];
+  const lines = [header.join(',')];
+  lastBackup.records.forEach(r => lines.push(['Record', r.recordId, r.type, r.createdAt, csvEscape(JSON.stringify(r.payload))].join(',')));
+  lastBackup.users.forEach(u => lines.push(['User', u.userId, (u.roles||[]).join('/'), u.createdAt, csvEscape(JSON.stringify(u))].join(',')));
+  downloadCsv(lines.join('\n'), `backup_${(lastBackup.orgName||'org').replace(/\s+/g,'-')}_${lastBackup.exportedAt.slice(0,10)}.csv`);
+});
+
+/* ---------- Archive summary + restore ---------- */
+const TYPE_LABELS = { score:'Scores', studentTermInfo:'Term details (attendance, ratings)', assignment:'Assignments', assignmentSubmission:'Assignment submissions',
+                      cbtTest:'CBT tests', cbtSubmission:'CBT submissions', attendance:'Daily attendance',
+                      resultPasscode:'Result passcodes', studentPromotion:'Promotion history', announcement:'Announcements' };
+let archiveData = null;
+function renderArchive(){
+  const box = document.getElementById('archiveSummary');
+  const types = Object.keys((archiveData && archiveData.byType) || {});
+  if (!types.length){ box.className = 'small mt-2 text-muted'; box.textContent = 'Nothing has been archived yet.'; document.getElementById('restoreBox').style.display = 'none'; return; }
+  box.className = 'small mt-2';
+  box.innerHTML = '<b>' + archiveData.total.toLocaleString() + ' records archived</b>' + (archiveData.volumes > 1 ? ' across ' + archiveData.volumes + ' archive files' : '') + '<ul class="mb-0">' + types.map(t => {
+    const e = archiveData.byType[t]; const ses = Object.keys(e.sessions || {});
+    return '<li>' + (TYPE_LABELS[t] || t) + ': ' + e.count.toLocaleString() + (ses.length ? ' (' + ses.sort().join(', ') + ')' : '') + '</li>';
+  }).join('') + '</ul>';
+  const sel = document.getElementById('restoreType');
+  sel.innerHTML = types.map(t => '<option value="' + t + '">' + (TYPE_LABELS[t] || t) + '</option>').join('');
+  fillSessions();
+  document.getElementById('restoreBox').style.display = 'block';
+}
+function fillSessions(){
+  const t = document.getElementById('restoreType').value;
+  const ses = Object.keys(((archiveData.byType[t] || {}).sessions) || {}).sort();
+  document.getElementById('restoreSession').innerHTML = '<option value="">All sessions</option>' + ses.map(s => '<option>' + s + '</option>').join('');
+}
+document.getElementById('restoreType').addEventListener('change', fillSessions);
+async function loadArchive(){
+  const box = document.getElementById('archiveSummary');
+  box.className = 'small mt-2 text-muted'; box.textContent = 'Checking…';
+  try {
+    const resp = await apiCall({ action: 'getArchiveSummary' });
+    if (!resp.ok){ box.className = 'small mt-2 text-danger'; box.textContent = resp.error; return; }
+    archiveData = resp; renderArchive();
+  } catch (e) { box.className = 'small mt-2 text-danger'; box.textContent = 'Could not reach the server. Check your connection.'; }
+}
+document.getElementById('archiveRefreshBtn').addEventListener('click', loadArchive);
+document.getElementById('restoreBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('restoreMsg'); const btn = document.getElementById('restoreBtn');
+  const type = document.getElementById('restoreType').value, sess = document.getElementById('restoreSession').value;
+  if (!confirm('Restore ' + (TYPE_LABELS[type] || type) + (sess ? ' for ' + sess : ' (all sessions)') + ' to the live system?')) return;
+  btn.disabled = true; msg.className = 'small mt-1 text-muted'; msg.textContent = 'Restoring…';
+  try {
+    const resp = await apiCall({ action: 'restoreArchived', type, session: sess });
+    if (!resp.ok){ msg.className = 'small mt-1 text-danger'; msg.textContent = resp.error; }
+    else { msg.className = 'small mt-1 text-success'; msg.textContent = resp.restored + ' record(s) restored. Tap Sync Now on your Home tab to see them on this device.'; loadArchive(); if (window.smsSync && window.smsSync.syncNow) window.smsSync.syncNow(); }
+  } catch (e) { msg.className = 'small mt-1 text-danger'; msg.textContent = 'Could not reach the server. Check your connection.'; }
+  btn.disabled = false;
+});
+</script>
+<script src="logout-lib.js"></script>
+<script src="pw-toggle.js"></script>
+</body>
+</html>

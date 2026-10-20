@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Admission List</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  table{font-size:.84rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+  .adm-no{font-family:Consolas,"DejaVu Sans Mono",monospace;font-weight:700;color:#14213D;}
+
+  /* ---- The printout: A4 portrait, school letterhead, one block per class ---- */
+  #printSheet{display:none;background:#fff;color:#1a1a1a;font-family:"Segoe UI",Arial,sans-serif;width:190mm;max-width:100%;margin:0 auto;padding:10mm;box-sizing:border-box;box-shadow:0 2px 16px rgba(0,0,0,.2);}
+  .al-title{margin-top:6mm;background:var(--sch-primary);color:var(--sch-on-primary);text-align:center;font-weight:800;font-size:11pt;letter-spacing:.1em;padding:2.4mm 0;border-radius:1mm;}
+  .al-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm;margin:4mm 0 5mm;}
+  .al-meta div{background:#f6f6f4;border:.25mm solid #d6d3c8;border-radius:1.2mm;padding:1.7mm 3mm;font-size:8.8pt;}
+  .al-meta .k{display:block;font-size:5.9pt;letter-spacing:.09em;color:#6b6b6b;text-transform:uppercase;font-weight:700;margin-bottom:.6mm;}
+  .al-meta .v{font-weight:700;}
+  .al-class{margin-top:5mm;break-inside:auto;}
+  .al-class h3{margin:0 0 2mm;font-size:9.5pt;font-weight:800;color:var(--sch-primary);border-left:1.2mm solid var(--sch-primary);background:var(--sch-tint);padding:1.6mm 2.4mm;letter-spacing:.04em;}
+  .al-class h3 span{float:right;color:#555;font-weight:600;font-size:8pt;}
+  .al-table{width:100%;border-collapse:collapse;font-size:9.2pt;}
+  .al-table th{background:var(--sch-primary);color:var(--sch-on-primary);font-size:7.2pt;letter-spacing:.06em;text-align:left;padding:2mm 3mm;text-transform:uppercase;}
+  .al-table td{border-bottom:.25mm solid #d6d3c8;padding:2.1mm 3mm;}
+  .al-table tr:nth-child(even) td{background:#f8f8f6;}
+  .al-table td.sn{width:11mm;color:#666;}
+  .al-table td.no{width:44mm;font-family:Consolas,"DejaVu Sans Mono",monospace;font-weight:700;letter-spacing:.04em;color:var(--sch-primary);}
+  .al-table tr{break-inside:avoid;page-break-inside:avoid;}
+  .al-note{margin-top:6mm;font-size:7.8pt;color:#555;border-left:1.2mm solid var(--sch-accent);padding:1mm 0 1mm 3mm;line-height:1.5;}
+  .al-break{break-before:page;page-break-before:always;}
+  @media print{
+    @page{size:A4 portrait;margin:10mm;}
+    body{background:#fff !important;padding:0 !important;}
+    body *{visibility:hidden;}
+    #printSheet,#printSheet *{visibility:visible;}
+    #printSheet{position:absolute;left:0;top:0;width:190mm;padding:0;box-shadow:none;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — showing the list saved on this device.</div>
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>Admission List</h1>
+      <div class="sync-status" id="syncStatusText"></div>
+    </div>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+
+  <div class="card-panel" id="controls">
+    <div class="small text-muted mb-3">Print every student's admission number with their name, for one class or the whole school. Each admission number belongs to one student for life and does not change when the student is promoted.</div>
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-3"><label class="form-label small">Class</label><select class="form-select form-select-sm" id="fClass"></select></div>
+      <div class="col-6 col-md-2"><label class="form-label small">Arm</label><select class="form-select form-select-sm" id="fArm"></select></div>
+      <div class="col-6 col-md-2"><label class="form-label small">Sort by</label><select class="form-select form-select-sm" id="fSort"><option value="name">Name (A to Z)</option><option value="adm">Admission number</option></select></div>
+      <div class="col-6 col-md-2"><label class="form-label small">Names shown</label><select class="form-select form-select-sm" id="fCase"><option value="caps">CAPITAL LETTERS</option><option value="asis">As recorded</option></select></div>
+      <div class="col-12 col-md-3 d-flex flex-column justify-content-end">
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="fInactive"><label class="form-check-label small" for="fInactive">Include inactive students</label></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="fBreak" checked><label class="form-check-label small" for="fBreak">New page for each class</label></div>
+      </div>
+    </div>
+    <div class="mt-3 d-flex flex-wrap gap-2">
+      <button class="btn btn-forest btn-sm" id="printBtn"><i class="bi bi-printer"></i> Print admission list</button>
+      <button class="btn btn-outline-secondary btn-sm" id="csvBtn"><i class="bi bi-filetype-csv"></i> Export CSV</button>
+      <span class="small text-muted align-self-center" id="countLabel"></span>
+    </div>
+  </div>
+
+  <div class="card-panel" id="previewCard">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>#</th><th>Admission No.</th><th>Student name</th><th>Class</th><th>Status</th></tr></thead>
+        <tbody id="previewBody"><tr><td colspan="5" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="printSheet"></div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="print-lib.js"></script>
+<script src="csv-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const ALLOWED_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher','Bursar / Accountant'];
+const SEE_ALL_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Bursar / Accountant'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => ALLOWED_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+const seesAll = roles.some(r => SEE_ALL_ROLES.includes(r));
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+window.smsSync.onStatus(d => {
+  const dotClass = d.syncing ? 'syncing' : (d.online ? 'online' : 'offline');
+  document.getElementById('syncStatusText').innerHTML = `<span class="dot ${dotClass}"></span>${d.syncing ? 'Syncing…' : (d.online ? 'Online' : 'Offline')}${d.pending ? ' — ' + d.pending + ' pending' : ''}`;
+});
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+let settingsState = {}, students = [], allowedPairs = null;   // allowedPairs: for a teacher, the "class|arm" pairs they teach
+
+async function load(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsState = payload;
+  students = await window.smsSync.getRecords('student');
+  if (!seesAll) {
+    // A teacher sees the classes they are the form teacher of, or teach a subject in.
+    const [ct, sa] = await Promise.all([window.smsSync.getRecords('classTeacher'), window.smsSync.getRecords('subjectAssignment')]);
+    allowedPairs = new Set();
+    ct.concat(sa).forEach(r => { if (r.payload.teacherUserId === session.userId) allowedPairs.add((r.payload.class || '') + '|' + (r.payload.arm || '')); });
+  }
+  fillClassSelect();
+  render();
+}
+
+function inScope(rec){
+  if (!allowedPairs) return true;
+  return allowedPairs.has((rec.payload.class || '') + '|' + (rec.payload.arm || ''));
+}
+function fillClassSelect(){
+  const scoped = students.filter(inScope);
+  const classes = (settingsState.classes || []).filter(c => scoped.some(s => s.payload.class === c));
+  const extra = Array.from(new Set(scoped.map(s => s.payload.class).filter(c => c && !classes.includes(c))));
+  const sel = document.getElementById('fClass');
+  sel.innerHTML = '<option value="">All classes</option>' + classes.concat(extra).map(c => `<option>${esc(c)}</option>`).join('');
+  fillArmSelect();
+}
+function fillArmSelect(){
+  const cls = document.getElementById('fClass').value;
+  const arms = Array.from(new Set(students.filter(inScope).filter(s => !cls || s.payload.class === cls).map(s => s.payload.arm || '').filter(Boolean))).sort();
+  document.getElementById('fArm').innerHTML = '<option value="">All arms</option>' + arms.map(a => `<option>${esc(a)}</option>`).join('');
+}
+
+function selected(){
+  const cls = document.getElementById('fClass').value, arm = document.getElementById('fArm').value;
+  const inactive = document.getElementById('fInactive').checked;
+  const sortBy = document.getElementById('fSort').value;
+  const caps = document.getElementById('fCase').value === 'caps';
+  let list = students.filter(inScope).filter(s => (!cls || s.payload.class === cls) && (!arm || (s.payload.arm || '') === arm) && (inactive || s.payload.active !== false));
+  const nameOf = s => caps ? String(s.payload.fullName || '').toUpperCase() : String(s.payload.fullName || '');
+  list = list.map(s => ({ cls: s.payload.class || '', arm: s.payload.arm || '', adm: String(s.payload.admissionNo || ''), name: nameOf(s), active: s.payload.active !== false }));
+  const classOrder = (settingsState.classes || []);
+  list.sort((a, b) => {
+    const ca = classOrder.indexOf(a.cls), cb = classOrder.indexOf(b.cls);
+    if (ca !== cb) return (ca === -1 ? 999 : ca) - (cb === -1 ? 999 : cb);
+    if (a.arm !== b.arm) return a.arm < b.arm ? -1 : 1;
+    return sortBy === 'adm' ? a.adm.localeCompare(b.adm, undefined, { numeric: true }) : a.name.localeCompare(b.name);
+  });
+  return list;
+}
+
+function render(){
+  const list = selected();
+  document.getElementById('countLabel').textContent = list.length + ' student' + (list.length === 1 ? '' : 's');
+  document.getElementById('previewBody').innerHTML = list.length ? list.map((s, i) => `
+    <tr><td>${i + 1}</td><td class="adm-no">${esc(s.adm)}</td><td>${esc(s.name)}</td><td>${esc((s.cls + ' ' + s.arm).trim())}</td><td>${s.active ? '<span class="badge bg-success-subtle text-success">Active</span>' : '<span class="badge bg-secondary-subtle text-secondary">Inactive</span>'}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="text-center text-muted py-3">No students match.</td></tr>';
+}
+['fClass'].forEach(id => document.getElementById(id).addEventListener('change', () => { fillArmSelect(); render(); }));
+['fArm','fSort','fCase','fInactive','fBreak'].forEach(id => document.getElementById(id).addEventListener('change', render));
+
+function buildSheet(){
+  const b = window.smsPrint.brand(settingsState);
+  window.smsPrint.applyTheme(b);
+  const list = selected();
+  const cls = document.getElementById('fClass').value, arm = document.getElementById('fArm').value;
+  const breakPerClass = document.getElementById('fBreak').checked;
+  const groups = [];
+  list.forEach(s => {
+    const key = (s.cls + ' ' + s.arm).trim();
+    let g = groups[groups.length - 1];
+    if (!g || g.key !== key) { g = { key, rows: [] }; groups.push(g); }
+    g.rows.push(s);
+  });
+  const scope = cls ? (cls + (arm ? ' ' + arm : '')) : 'All classes';
+  const today = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+  document.getElementById('printSheet').innerHTML = `
+    ${window.smsPrint.letterhead(b)}
+    <div class="al-title">STUDENT ADMISSION NUMBER LIST</div>
+    <div class="al-meta">
+      <div><span class="k">Class</span><span class="v">${esc(scope)}</span></div>
+      <div><span class="k">Session</span><span class="v">${esc(settingsState.currentSession || '')}</span></div>
+      <div><span class="k">Students</span><span class="v">${list.length}</span></div>
+    </div>
+    ${groups.map((g, gi) => `
+      <div class="al-class ${breakPerClass && gi > 0 ? 'al-break' : ''}">
+        <h3>${esc(g.key || 'No class')}<span>${g.rows.length} student${g.rows.length === 1 ? '' : 's'}</span></h3>
+        <table class="al-table"><thead><tr><th>S/N</th><th>Admission no.</th><th>Student name</th></tr></thead><tbody>
+          ${g.rows.map((s, i) => `<tr><td class="sn">${i + 1}</td><td class="no">${esc(s.adm)}</td><td>${esc(s.name)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`).join('') || '<div class="al-note">No students to list.</div>'}
+    <div class="al-note">Each admission number belongs to one student only and stays the same for life, including after promotion. On the school portal, students type their admission number and surname in CAPITAL LETTERS.</div>
+    ${window.smsPrint.footer(b, 'Printed ' + esc(today) + (session && session.fullName ? ' by ' + esc(session.fullName) : ''))}`;
+}
+document.getElementById('printBtn').addEventListener('click', () => {
+  buildSheet();
+  document.getElementById('printSheet').style.display = 'block';
+  setTimeout(() => { window.print(); setTimeout(() => { document.getElementById('printSheet').style.display = 'none'; }, 400); }, 150);
+});
+window.addEventListener('beforeprint', () => { buildSheet(); });
+
+document.getElementById('csvBtn').addEventListener('click', () => {
+  const list = selected();
+  const csv = 'admissionNo,fullName,class,arm,status\n' + list.map(s => [s.adm, s.name, s.cls, s.arm, s.active ? 'Active' : 'Inactive'].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+  downloadCsv(csv, 'admission-list.csv');
+});
+
+load();
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

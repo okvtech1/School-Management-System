@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Help — Parent and Student Guide</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#14213D;min-height:100vh;font-family:system-ui,sans-serif;padding:1rem;}
+  .wrap{max-width:700px;margin:0 auto;}
+  h1{font-size:1.2rem;font-weight:800;color:#fff;text-align:center;margin-bottom:1rem;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.2);margin-bottom:1rem;}
+  .g-sec h2{font-size:1rem;font-weight:800;color:#14213D;border-bottom:2px solid #F1E7D3;padding-bottom:.35rem;margin:0 0 .6rem;}
+  .g-sec h2 i{color:#B8863B;margin-right:.4rem;}
+  .g-sec{margin-bottom:1.3rem;} .g-sec p,.g-sec li{font-size:.9rem;color:#3d3826;} .g-sec ol,.g-sec ul{padding-left:1.2rem;margin-bottom:.4rem;}
+  .caps{background:#FCF3DA;border:1px solid #E8D27A;border-radius:8px;padding:.5rem .8rem;font-size:.86rem;color:#6e5410;font-weight:600;}
+  .tip{background:#E4F0FB;border-left:4px solid #1D2F55;border-radius:6px;padding:.5rem .8rem;font-size:.84rem;margin:.6rem 0;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;} .btn-forest:hover{background:#1D2F55;color:#fff;}
+  #printDoc{display:none;}
+  .sch-doc-title{margin-top:6mm;background:var(--sch-primary);color:var(--sch-on-primary);text-align:center;font-weight:800;font-size:11pt;letter-spacing:.1em;padding:2.4mm 0;border-radius:1mm;}
+  @media print{
+    @page{size:A4 portrait;margin:10mm;}
+    body{background:#fff !important;padding:0 !important;}
+    #portalNav,.no-print,#screenDoc,body > div:not(#printDoc){display:none !important;}
+    #printDoc{display:block !important;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><i class="bi bi-question-circle"></i> Help for Parents and Students</h1>
+  <div class="card-panel" id="screenDoc">
+    <div id="guideBody"></div>
+    <div class="no-print d-flex gap-2 flex-wrap"><button class="btn btn-forest" id="printGuideBtn"><i class="bi bi-printer"></i> Print or save this guide as PDF</button></div>
+  </div>
+</div>
+<div id="printDoc"></div>
+
+<script src="print-lib.js"></script>
+<script>
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+const orgId = new URLSearchParams(window.location.search).get('org') || '';
+
+// The guide text, written for families. The same HTML is shown on screen and printed on the school's letterhead.
+const GUIDE = `
+<div class="g-sec"><h2><i class="bi bi-house"></i> What this page is for</h2>
+  <p>Your school's portal lets you check a result, do assignments, take a computer test and pay school fees from a phone, with no account to create. Use the tabs at the top of the page.</p>
+  <div class="tip">Install the app for the best experience: when the install page appears, follow the steps for your phone. It works faster and keeps working when the network is poor.</div></div>
+
+<div class="g-sec"><h2><i class="bi bi-file-earmark-text"></i> Check Result</h2>
+  <ol><li>Open the <b>Check Result</b> tab.</li>
+  <li>Select the <b>Session</b>, the <b>Term</b> and your child's <b>Class</b>.</li>
+  <li>Type the <b>Passcode</b> printed on the slip the school gave your child. That is all you need.</li>
+  <li>Tap <b>Check Result</b>. Your child's report sheet appears, signed by the school.</li>
+  <li>Tap <b>Download PDF</b> to save the exact sheet on your phone, or <b>Print</b> to print it on A4.</li></ol>
+  <p><b>If the result does not open:</b> check the session, term and class you selected, and type the passcode again. If you are told fees are not cleared, pay on the <b>Pay Fees</b> tab or at the bursar's office, then try again after the payment is confirmed.</p>
+  <p>Keep the passcode private. If you lose it, ask the school office.</p></div>
+
+<div class="g-sec"><h2><i class="bi bi-person-vcard"></i> Assignments, CBT tests and paying fees</h2>
+  <p>These three tabs ask who you are with two things:</p>
+  <div class="caps">1) Admission Number &nbsp; 2) Surname &nbsp;&mdash; both typed in CAPITAL LETTERS<br><span style="font-weight:500;">Example: OKV/2026/0142 and OKONKWO</span></div>
+  <p class="mt-2">Your admission number belongs to one student only and does not change, even when the student moves to a new class. Your surname must be spelled as the school wrote it. The page changes small letters to capitals for you.</p>
+  <ul><li><b>Assignments:</b> choose the assignment, type your answer and submit. You can submit only once.</li>
+  <li><b>CBT Test/Exam:</b> choose a live test and tap Start. The test fills the screen and the timer runs. Do not leave the page, switch apps or exit full screen: the test is then submitted automatically with the answers you have given so far.</li>
+  <li><b>Pay Fees:</b> you will see the fee list and your balance. Choose the fee, enter the amount paid and your email, attach a clear photo of your receipt and submit. Note your <b>reference number</b>. The school confirms the payment and emails you the result.</li></ul></div>
+
+<div class="g-sec"><h2><i class="bi bi-lightbulb"></i> Common questions</h2>
+  <p><b>"No matching student found."</b> Check that the admission number has no extra spaces and that the surname is exactly as the school spelled it.</p>
+  <p><b>"Too many incorrect passcodes."</b> Wait about 15 minutes, then try again, or ask the school office.</p>
+  <p><b>My payment is still pending.</b> A person confirms each payment, so allow a little time. Keep your reference number.</p>
+  <p><b>Can I use another phone?</b> Yes. Open the same school link on any phone or computer.</p></div>
+`;
+document.getElementById('guideBody').innerHTML = GUIDE;
+
+async function loadSchool(){
+  let info = {};
+  try {
+    const r = await fetch(window.SMS_API_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'publicGetOrgInfo', orgId }) });
+    const j = await r.json(); if (j.ok) info = j;
+  } catch (e) {}
+  const b = window.smsPrint.brand(info);
+  window.smsPrint.applyTheme(b);
+  document.getElementById('printDoc').innerHTML = `<div style="font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;">
+    ${window.smsPrint.letterhead(b)}
+    <div class="sch-doc-title">PARENT AND STUDENT GUIDE TO THE SCHOOL PORTAL</div>
+    <div style="margin-top:5mm;">${GUIDE}</div>
+    ${window.smsPrint.footer(b)}</div>`;
+}
+document.getElementById('printGuideBtn').addEventListener('click', () => window.print());
+loadSchool();
+</script>
+<script src="portal-nav.js"></script>
+<script>renderPortalNav('help');</script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Financial Management</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .card-panel h2{font-size:1rem;font-weight:700;color:#14213D;margin-bottom:.9rem;}
+  table{font-size:.82rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .tabbar{display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;}
+  .tabbar button{border:1px solid #DCD0B4;background:#fff;color:#5b5442;font-size:.82rem;font-weight:600;padding:.4em 1em;border-radius:20px;}
+  .tabbar button.active{background:#14213D;border-color:#14213D;color:#fff;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem;}
+  .summary-card{border-radius:12px;padding:.9rem 1rem;}
+  .summary-card .label{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;opacity:.85;}
+  .summary-card .value{font-size:1.3rem;font-weight:800;}
+  .sc-income{background:#DFF3E4;color:#1E6B3A;}
+  .sc-expense{background:#FBE4E4;color:#8B1E3F;}
+  .sc-net-pos{background:#E4F0FB;color:#1D5A9C;}
+  .sc-net-neg{background:#FCF3DA;color:#8A6A12;}
+  .bar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;}
+  .bar-row .lbl{width:110px;font-size:.75rem;color:#5b5442;flex:none;}
+  .bar-track{flex:1;background:#F1E7D3;border-radius:6px;overflow:hidden;height:18px;position:relative;}
+  .bar-fill{height:100%;border-radius:6px;}
+  .bar-fill.income{background:#2F6B4F;}
+  .bar-fill.expense{background:#8B1E3F;}
+  .bar-amt{width:90px;text-align:right;font-size:.75rem;font-weight:700;color:#14213D;flex:none;}
+  .month-chart{display:flex;gap:1rem;align-items:flex-end;height:160px;overflow-x:auto;padding-top:1rem;}
+  .month-col{display:flex;flex-direction:column;align-items:center;gap:.3rem;min-width:56px;}
+  .month-bars{display:flex;gap:.25rem;align-items:flex-end;height:120px;}
+  .month-bars .bar{width:18px;border-radius:4px 4px 0 0;}
+  .month-bars .bar.income{background:#2F6B4F;}
+  .month-bars .bar.expense{background:#8B1E3F;}
+  .month-col .m-lbl{font-size:.68rem;color:#7a7259;}
+  .progress-bar-budget{height:8px;border-radius:4px;background:#F1E7D3;overflow:hidden;margin-top:.3rem;}
+  .progress-bar-budget .fill{height:100%;background:#B8863B;}
+  .progress-bar-budget .fill.over{background:#8B1E3F;}
+  @media print{
+    .topline a, .topline button, .tabbar, .quick-range, #rp_printBtn, #rp_csvBtn, #offlineBanner{display:none !important;}
+    #tab-expenses, #tab-income, #tab-projects{display:none !important;}
+    @page{size:A4 portrait;margin:10mm;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — changes are saved locally and will sync once you're back online.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <h1>Financial Management</h1>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+  </div>
+
+  <div class="card-panel" id="premiumLockPanel" style="display:none;">
+    <div style="background:#FCF3DA;border:1px solid #E8D27A;border-radius:10px;padding:1rem 1.2rem;color:#8A6A12;">
+      <i class="bi bi-lock"></i> General Financial Management is available on the <strong>Premium</strong> plan.
+      Your school is currently on <strong id="currentPlanLabel"></strong>.
+      <a href="upgrade.html" class="fw-bold">Upgrade to unlock it →</a>
+    </div>
+  </div>
+
+  <div id="mainArea">
+  <div class="tabbar">
+    <button data-tab="report" class="active">Cash Flow Report</button>
+    <button data-tab="expenses">Expenses</button>
+    <button data-tab="income">Income</button>
+    <button data-tab="projects">Projects &amp; Budgets</button>
+  </div>
+
+  <!-- CASH FLOW REPORT -->
+  <div class="tab-panel active" id="tab-report">
+    <div class="card-panel">
+      <div class="row g-2 align-items-end mb-3 no-print">
+        <div class="col-md-3"><label class="form-label small">From</label><input type="date" class="form-control form-control-sm" id="rp_from"></div>
+        <div class="col-md-3"><label class="form-label small">To</label><input type="date" class="form-control form-control-sm" id="rp_to"></div>
+        <div class="col-md-6">
+          <button class="btn btn-sm btn-outline-secondary quick-range" data-range="month">This Month</button>
+          <button class="btn btn-sm btn-outline-secondary quick-range" data-range="year">This Year</button>
+          <button class="btn btn-sm btn-outline-secondary quick-range" data-range="all">All Time</button>
+          <button class="btn btn-sm btn-outline-secondary" id="rp_printBtn"><i class="bi bi-printer"></i> Print</button>
+          <button class="btn btn-sm btn-outline-secondary" id="rp_csvBtn"><i class="bi bi-filetype-csv"></i> Download CSV</button>
+        </div>
+      </div>
+
+      <div class="summary-cards">
+        <div class="summary-card sc-income"><div class="label">Total Income</div><div class="value" id="sumIncome">—</div></div>
+        <div class="summary-card sc-expense"><div class="label">Total Expenses</div><div class="value" id="sumExpense">—</div></div>
+        <div class="summary-card" id="sumNetCard"><div class="label">Net Cash Flow</div><div class="value" id="sumNet">—</div></div>
+      </div>
+
+      <h2 style="font-size:.9rem;">By Month</h2>
+      <div class="month-chart" id="monthChart"></div>
+      <div class="small text-muted mb-3"><span style="color:#2F6B4F;">■</span> Income &nbsp; <span style="color:#8B1E3F;">■</span> Expenses</div>
+
+      <h2 style="font-size:.9rem;">Expenses by Category</h2>
+      <div id="categoryBreakdown"></div>
+
+      <div class="small text-muted mt-3 no-print">This report is computed live from your Expense, Income, and confirmed Fee Payment records every time you open or refresh this page — there's nothing to manually total up. Note it reflects what's synced to this device; if you just confirmed a payment on another device, give it a moment (or tap Sync Now on the dashboard) before checking here.</div>
+    </div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="tab-panel" id="tab-expenses">
+    <div class="card-panel">
+      <h2><i class="bi bi-dash-circle"></i> Record an Expense</h2>
+      <div class="row g-2 mb-3">
+        <div class="col-md-3"><input class="form-control form-control-sm" id="ex_category" placeholder="Category e.g. Utilities"></div>
+        <div class="col-md-3"><input class="form-control form-control-sm" id="ex_description" placeholder="Description"></div>
+        <div class="col-md-2"><input type="number" min="0" class="form-control form-control-sm" id="ex_amount" placeholder="Amount"></div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="ex_date"></div>
+        <div class="col-md-2"><select class="form-select form-select-sm" id="ex_project"><option value="">No project</option></select></div>
+      </div>
+      <button class="btn btn-sm btn-forest mb-3" id="ex_addBtn">Add Expense</button>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Project</th><th></th></tr></thead>
+          <tbody id="expenseTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOME -->
+  <div class="tab-panel" id="tab-income">
+    <div class="card-panel">
+      <h2><i class="bi bi-plus-circle"></i> Record Other Income</h2>
+      <div class="small text-muted mb-2">Fee payments confirmed in <a href="payments.html">Fee Payments</a> are counted automatically — use this only for other income (donations, grants, etc).</div>
+      <div class="row g-2 mb-3">
+        <div class="col-md-4"><input class="form-control form-control-sm" id="in_source" placeholder="Source e.g. PTA Donation"></div>
+        <div class="col-md-3"><input class="form-control form-control-sm" id="in_description" placeholder="Description"></div>
+        <div class="col-md-2"><input type="number" min="0" class="form-control form-control-sm" id="in_amount" placeholder="Amount"></div>
+        <div class="col-md-3"><input type="date" class="form-control form-control-sm" id="in_date"></div>
+      </div>
+      <button class="btn btn-sm btn-forest mb-3" id="in_addBtn">Add Income</button>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>Date</th><th>Source</th><th>Description</th><th>Amount</th><th></th></tr></thead>
+          <tbody id="incomeTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div class="tab-panel" id="tab-projects">
+    <div class="card-panel">
+      <h2><i class="bi bi-kanban"></i> Projects &amp; Budgets</h2>
+      <div class="row g-2 mb-3">
+        <div class="col-md-3"><input class="form-control form-control-sm" id="pj_name" placeholder="Project name"></div>
+        <div class="col-md-2"><input type="number" min="0" class="form-control form-control-sm" id="pj_budget" placeholder="Budget"></div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="pj_start"></div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="pj_end"></div>
+        <div class="col-md-2">
+          <select class="form-select form-select-sm" id="pj_status">
+            <option value="planned">Planned</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option>
+          </select>
+        </div>
+        <div class="col-md-1"><button class="btn btn-sm btn-forest w-100" id="pj_addBtn">Add</button></div>
+      </div>
+      <div id="projectList"></div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script src="csv-lib.js"></script>
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="print-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const FINANCE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Bursar / Accountant'];
+const WRITE_ROLES = ['Super Administrator','School Administrator','Bursar / Accountant'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => FINANCE_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+const canWrite = roles.some(r => WRITE_ROLES.includes(r));
+
+if (session.plan !== 'premium') {
+  document.getElementById('mainArea').style.display = 'none';
+  document.getElementById('premiumLockPanel').style.display = 'block';
+  document.getElementById('currentPlanLabel').textContent = session.plan ? (session.plan.charAt(0).toUpperCase() + session.plan.slice(1)) : 'Essentials';
+}
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+if (!canWrite) {
+  document.querySelectorAll('#tab-expenses input, #tab-expenses select, #tab-expenses button, #tab-income input, #tab-income button, #tab-projects input, #tab-projects select, #tab-projects button')
+    .forEach(el => el.disabled = true);
+}
+
+/* ============================== TABS ============================== */
+document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabbar button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById('tab-' + b.dataset.tab).classList.add('active');
+}));
+
+let expenses = [], incomes = [], projects = [], feePayments = [];
+let lastReportRange = { from: '', to: '' };
+let lastReportRows = []; // flat rows for CSV export — rebuilt by renderReport()
+
+async function loadAll(){
+  [expenses, incomes, projects, feePayments] = await Promise.all([
+    window.smsSync.getRecords('expense'),
+    window.smsSync.getRecords('incomeRecord'),
+    window.smsSync.getRecords('project'),
+    window.smsSync.getRecords('feePayment')
+  ]);
+  fillProjectSelect();
+  renderExpenses();
+  renderIncomes();
+  renderProjects();
+  renderReport();
+}
+
+/* ============================== EXPENSES ============================== */
+function fillProjectSelect(){
+  document.getElementById('ex_project').innerHTML = '<option value="">No project</option>' +
+    projects.map(p => `<option value="${p.recordId}">${p.payload.name}</option>`).join('');
+}
+function renderExpenses(){
+  const sorted = [...expenses].sort((a,b) => new Date(b.payload.date) - new Date(a.payload.date));
+  document.getElementById('expenseTableBody').innerHTML = sorted.map(r => {
+    const p = r.payload;
+    const proj = projects.find(pr => pr.recordId === p.projectId);
+    return `<tr>
+      <td class="small">${p.date||'—'}</td><td>${p.category||'—'}</td><td>${p.description||''}</td>
+      <td>${Number(p.amount||0).toLocaleString()}</td><td class="small">${proj?proj.payload.name:'—'}</td>
+      <td class="text-end">${canWrite ? `<button class="btn btn-sm btn-outline-danger ex-del" data-id="${r.recordId}">Delete</button>` : ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">No expenses recorded yet.</td></tr>';
+  document.querySelectorAll('.ex-del').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this expense?')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    expenses = expenses.filter(r => r.recordId !== b.dataset.id);
+    renderExpenses(); renderReport();
+  }));
+}
+document.getElementById('ex_addBtn').addEventListener('click', async () => {
+  const category = document.getElementById('ex_category').value.trim();
+  const description = document.getElementById('ex_description').value.trim();
+  const amount = Number(document.getElementById('ex_amount').value);
+  const date = document.getElementById('ex_date').value || new Date().toISOString().slice(0,10);
+  const projectId = document.getElementById('ex_project').value || null;
+  if (!category || !amount){ alert('Enter at least a category and amount.'); return; }
+  const payload = { category, description, amount, date, projectId };
+  const newId = await window.smsSync.saveRecord('expense', payload, null);
+  expenses.push({ recordId:newId, type:'expense', payload });
+  ['ex_category','ex_description','ex_amount'].forEach(id => document.getElementById(id).value = '');
+  renderExpenses(); renderReport();
+});
+
+/* ============================== INCOME ============================== */
+function renderIncomes(){
+  const sorted = [...incomes].sort((a,b) => new Date(b.payload.date) - new Date(a.payload.date));
+  document.getElementById('incomeTableBody').innerHTML = sorted.map(r => {
+    const p = r.payload;
+    return `<tr>
+      <td class="small">${p.date||'—'}</td><td>${p.source||'—'}</td><td>${p.description||''}</td>
+      <td>${Number(p.amount||0).toLocaleString()}</td>
+      <td class="text-end">${canWrite ? `<button class="btn btn-sm btn-outline-danger in-del" data-id="${r.recordId}">Delete</button>` : ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">No other income recorded yet.</td></tr>';
+  document.querySelectorAll('.in-del').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this income record?')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    incomes = incomes.filter(r => r.recordId !== b.dataset.id);
+    renderIncomes(); renderReport();
+  }));
+}
+document.getElementById('in_addBtn').addEventListener('click', async () => {
+  const source = document.getElementById('in_source').value.trim();
+  const description = document.getElementById('in_description').value.trim();
+  const amount = Number(document.getElementById('in_amount').value);
+  const date = document.getElementById('in_date').value || new Date().toISOString().slice(0,10);
+  if (!source || !amount){ alert('Enter at least a source and amount.'); return; }
+  const payload = { source, description, amount, date };
+  const newId = await window.smsSync.saveRecord('incomeRecord', payload, null);
+  incomes.push({ recordId:newId, type:'incomeRecord', payload });
+  ['in_source','in_description','in_amount'].forEach(id => document.getElementById(id).value = '');
+  renderIncomes(); renderReport();
+});
+
+/* ============================== PROJECTS ============================== */
+function renderProjects(){
+  document.getElementById('projectList').innerHTML = projects.map(r => {
+    const p = r.payload;
+    const spent = expenses.filter(e => e.payload.projectId === r.recordId).reduce((s,e)=>s+Number(e.payload.amount||0),0);
+    const pct = p.budget ? Math.min(100, Math.round(spent/p.budget*100)) : 0;
+    const over = p.budget && spent > p.budget;
+    return `<div class="border rounded p-3 mb-2">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <strong>${p.name}</strong> <span class="badge bg-light text-dark border">${p.status}</span>
+          <div class="small text-muted">${p.startDate||'—'} to ${p.endDate||'—'}</div>
+        </div>
+        ${canWrite ? `<button class="btn btn-sm btn-outline-danger pj-del" data-id="${r.recordId}">Delete</button>` : ''}
+      </div>
+      <div class="small mt-2">Spent ${spent.toLocaleString()} of ${Number(p.budget||0).toLocaleString()} budget ${over?'<span class="text-danger fw-bold">(over budget)</span>':''}</div>
+      <div class="progress-bar-budget"><div class="fill ${over?'over':''}" style="width:${pct}%;"></div></div>
+    </div>`;
+  }).join('') || '<div class="small text-muted">No projects yet.</div>';
+  document.querySelectorAll('.pj-del').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this project? Linked expenses will remain but lose their project label.')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    projects = projects.filter(r => r.recordId !== b.dataset.id);
+    fillProjectSelect(); renderProjects();
+  }));
+}
+document.getElementById('pj_addBtn').addEventListener('click', async () => {
+  const name = document.getElementById('pj_name').value.trim();
+  const budget = Number(document.getElementById('pj_budget').value) || 0;
+  const startDate = document.getElementById('pj_start').value;
+  const endDate = document.getElementById('pj_end').value;
+  const status = document.getElementById('pj_status').value;
+  if (!name){ alert('Enter a project name.'); return; }
+  const payload = { name, budget, startDate, endDate, status };
+  const newId = await window.smsSync.saveRecord('project', payload, null);
+  projects.push({ recordId:newId, type:'project', payload });
+  ['pj_name','pj_budget','pj_start','pj_end'].forEach(id => document.getElementById(id).value = '');
+  fillProjectSelect(); renderProjects();
+});
+
+/* ============================== CASH FLOW REPORT ============================== */
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+document.querySelectorAll('.quick-range').forEach(b => b.addEventListener('click', () => {
+  const now = new Date();
+  let from, to = todayStr();
+  if (b.dataset.range === 'month') from = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  else if (b.dataset.range === 'year') from = `${now.getFullYear()}-01-01`;
+  else { from = ''; to = ''; }
+  document.getElementById('rp_from').value = from;
+  document.getElementById('rp_to').value = to;
+  renderReport();
+}));
+document.getElementById('rp_from').addEventListener('change', renderReport);
+document.getElementById('rp_to').addEventListener('change', renderReport);
+
+function inRange(dateStr, from, to){
+  if (!dateStr) return false;
+  if (from && dateStr < from) return false;
+  if (to && dateStr > to) return false;
+  return true;
+}
+
+function renderReport(){
+  const from = document.getElementById('rp_from').value;
+  const to = document.getElementById('rp_to').value;
+
+  const expInRange = expenses.filter(e => inRange(e.payload.date, from, to));
+  const incInRange = incomes.filter(i => inRange(i.payload.date, from, to));
+  const feeInRange = feePayments.filter(p => {
+    const status = p.payload.status;
+    const isIncome = status === 'confirmed-full' || status === 'confirmed-partial';
+    return isIncome && inRange((p.payload.confirmedAt||'').slice(0,10), from, to);
+  });
+
+  const totalExpense = expInRange.reduce((s,e)=>s+Number(e.payload.amount||0),0);
+  const totalOtherIncome = incInRange.reduce((s,i)=>s+Number(i.payload.amount||0),0);
+  const totalFeeIncome = feeInRange.reduce((s,p)=>s+Number(p.payload.confirmedAmount||0),0);
+  const totalIncome = totalOtherIncome + totalFeeIncome;
+  const net = totalIncome - totalExpense;
+
+  document.getElementById('sumIncome').textContent = totalIncome.toLocaleString();
+  document.getElementById('sumExpense').textContent = totalExpense.toLocaleString();
+  document.getElementById('sumNet').textContent = (net>=0?'+':'') + net.toLocaleString();
+  const netCard = document.getElementById('sumNetCard');
+  netCard.className = 'summary-card ' + (net>=0 ? 'sc-net-pos' : 'sc-net-neg');
+
+  // Category breakdown
+  const byCat = {};
+  expInRange.forEach(e => { const c = e.payload.category||'Uncategorized'; byCat[c] = (byCat[c]||0) + Number(e.payload.amount||0); });
+  const maxCat = Math.max(1, ...Object.values(byCat));
+  const catBox = document.getElementById('categoryBreakdown');
+  const catEntries = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  catBox.innerHTML = catEntries.length ? catEntries.map(([cat, amt]) => `
+    <div class="bar-row">
+      <div class="lbl">${cat}</div>
+      <div class="bar-track"><div class="bar-fill expense" style="width:${Math.round(amt/maxCat*100)}%;"></div></div>
+      <div class="bar-amt">${amt.toLocaleString()}</div>
+    </div>`).join('') : '<div class="small text-muted">No expenses in this range.</div>';
+
+  // Monthly chart
+  const months = {}; // 'YYYY-MM' -> {income, expense}
+  function addToMonth(dateStr, field, amt){
+    if (!dateStr) return;
+    const m = dateStr.slice(0,7);
+    months[m] = months[m] || { income:0, expense:0 };
+    months[m][field] += amt;
+  }
+  expInRange.forEach(e => addToMonth(e.payload.date, 'expense', Number(e.payload.amount||0)));
+  incInRange.forEach(i => addToMonth(i.payload.date, 'income', Number(i.payload.amount||0)));
+  feeInRange.forEach(p => addToMonth((p.payload.confirmedAt||'').slice(0,10), 'income', Number(p.payload.confirmedAmount||0)));
+
+  const monthKeys = Object.keys(months).sort();
+  const maxVal = Math.max(1, ...monthKeys.map(m => Math.max(months[m].income, months[m].expense)));
+  document.getElementById('monthChart').innerHTML = monthKeys.length ? monthKeys.map(m => `
+    <div class="month-col">
+      <div class="month-bars">
+        <div class="bar income" style="height:${Math.round(months[m].income/maxVal*120)}px;" title="Income: ${months[m].income}"></div>
+        <div class="bar expense" style="height:${Math.round(months[m].expense/maxVal*120)}px;" title="Expenses: ${months[m].expense}"></div>
+      </div>
+      <div class="m-lbl">${m}</div>
+    </div>`).join('') : '<div class="small text-muted">No data in this range yet.</div>';
+
+  // Flat row list for CSV export / print — every income & expense line in this range,
+  // in one consistent shape, newest first.
+  lastReportRange = { from, to };
+  lastReportRows = [
+    ...expInRange.map(e => ({ date: e.payload.date, type: 'Expense', category: e.payload.category || 'Uncategorized', description: e.payload.description || '', amount: -Number(e.payload.amount || 0) })),
+    ...incInRange.map(i => ({ date: i.payload.date, type: 'Income', category: i.payload.source || 'Other Income', description: i.payload.description || '', amount: Number(i.payload.amount || 0) })),
+    ...feeInRange.map(p => ({ date: (p.payload.confirmedAt || '').slice(0, 10), type: 'Income', category: 'Fee Payment — ' + (p.payload.feeTypeName || ''), description: p.payload.fullName || '', amount: Number(p.payload.confirmedAmount || 0) }))
+  ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+
+document.getElementById('rp_printBtn').addEventListener('click', () => window.print());
+// Branded A4 letterhead on the cash-flow printout (also applies when printing with Ctrl+P).
+window.smsPrint.attachPage(() => {
+  const from = document.getElementById('rp_from').value, to = document.getElementById('rp_to').value;
+  return { title: 'Cash Flow Report', meta: [['Period', `${from || 'Beginning'} to ${to || 'Now'}`], ['Prepared by', (session && session.fullName) || '']] };
+});
+document.getElementById('rp_csvBtn').addEventListener('click', () => {
+  const header = ['Date', 'Type', 'Category', 'Description', 'Amount'];
+  const lines = [header.join(',')].concat(
+    lastReportRows.map(r => [r.date, r.type, csvEscape(r.category), csvEscape(r.description), r.amount].join(','))
+  );
+  const rangeLabel = (lastReportRange.from || 'start') + '_to_' + (lastReportRange.to || 'now');
+  downloadCsv(lines.join('\n'), `cash-flow-report_${rangeLabel}.csv`);
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

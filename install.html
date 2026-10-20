@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Install OKV School Management System</title>
+<meta name="description" content="Install OKV School Management System to your home screen for the best offline experience.">
+<meta name="robots" content="noindex, follow">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  html,body{height:100%;margin:0;}
+  body{
+    background:radial-gradient(circle at 20% 10%, #1D2F55, #14213D 60%);
+    color:#EFE9D8; font-family:system-ui,sans-serif; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:1.25rem;
+  }
+  .gate{max-width:480px; width:100%; text-align:center;}
+  .seal{
+    width:76px;height:76px;border-radius:50%;margin:0 auto 1.1rem;
+    background:radial-gradient(circle at 35% 30%, #B8863B, #93672B);
+    display:flex;align-items:center;justify-content:center;font-size:2rem;color:#14213D;
+    box-shadow:0 0 0 6px rgba(184,134,59,.2);
+  }
+  h1{font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:.4rem;}
+  .lead{color:#C9BFA0;font-size:.92rem;margin-bottom:1.6rem;}
+  .install-card{
+    background:#fff;color:#241F1A;border-radius:16px;padding:1.5rem;
+    box-shadow:0 25px 70px rgba(0,0,0,.45);text-align:left;
+  }
+  .install-card h2{font-size:1.05rem;font-weight:700;color:#14213D;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;}
+  .btn-install{
+    background:#B8863B;border-color:#B8863B;color:#14213D;font-weight:800;width:100%;
+    padding:.75rem;font-size:1rem;border-radius:10px;
+  }
+  .btn-install:hover{background:#93672B;border-color:#93672B;color:#fff;}
+  .btn-install:disabled{opacity:.5;}
+  ol.steps{padding-left:1.2rem;margin:0;font-size:.9rem;}
+  ol.steps li{margin-bottom:.5rem;}
+  ol.steps .bi{color:#B8863B;}
+  .platform-badge{
+    display:inline-block;font-family:monospace;font-size:.68rem;letter-spacing:.06em;
+    text-transform:uppercase;background:#F1E7D3;color:#93672B;padding:.2rem .55rem;border-radius:6px;margin-bottom:.75rem;
+  }
+  .status-line{font-size:.82rem;color:#C9BFA0;margin-top:1rem;min-height:1.2em;}
+  #continueLink{color:#EFE9D8;font-size:.8rem;text-decoration:underline;margin-top:1.4rem;display:none;}
+  .fallback-note{font-size:.82rem;color:#5b5442;background:#FCF3DA;border:1px solid #E8D27A;border-radius:8px;padding:.65rem .8rem;margin-top:.9rem;}
+</style>
+</head>
+<body>
+
+<div class="gate">
+  <div class="seal"><i class="bi bi-mortarboard-fill"></i></div>
+  <h1>OKV School Management System</h1>
+  <div class="lead">This app must be installed to your device before you can sign in. Installation takes a few seconds and gives you one-tap access.</div>
+
+  <div class="install-card">
+    <div class="platform-badge" id="platformBadge">Detecting device…</div>
+
+    <div id="androidDesktopBlock" style="display:none;">
+      <h2><i class="bi bi-download"></i> Install the App</h2>
+      <p class="small text-muted">Tap the button below and confirm the install prompt.</p>
+      <button class="btn btn-install" id="installBtn" disabled>Preparing install…</button>
+      <div class="fallback-note" id="adFallback" style="display:none;">
+        Your browser didn't offer an automatic install prompt. Open the browser menu (⋮) and choose <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
+      </div>
+    </div>
+
+    <div id="iosBlock" style="display:none;">
+      <h2><i class="bi bi-apple"></i> Install on iPhone / iPad</h2>
+      <ol class="steps">
+        <li><i class="bi bi-box-arrow-up"></i> Tap the <strong>Share</strong> button in Safari's toolbar</li>
+        <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+        <li>Tap <strong>"Add"</strong> in the top-right corner</li>
+        <li>Open the new <strong>OKV School Management System</strong> icon from your Home Screen</li>
+      </ol>
+      <div class="fallback-note">Must be opened in <strong>Safari</strong> — Chrome/Facebook/Instagram browsers on iOS can't install apps to your Home Screen.</div>
+    </div>
+
+    <div id="unsupportedBlock" style="display:none;">
+      <h2><i class="bi bi-exclamation-triangle"></i> Browser Not Supported</h2>
+      <p class="small">Please open this page in <strong>Chrome, Edge, or Safari</strong> to install the app.</p>
+    </div>
+
+    <div class="status-line" id="statusLine"></div>
+  </div>
+
+  <a href="#" id="continueLink">Already installed and it's not opening automatically? Tap here.</a>
+</div>
+
+<script>
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+// A public page (result checker, CBT exam) can send visitors here first and get
+// routed back to itself after install — falls back to the staff login otherwise.
+const installParams = new URLSearchParams(window.location.search);
+// Short link form: install.html?org=<schoolId> opens this install page, then continues to that school's portal.
+const orgParam = (installParams.get('org') || '').replace(/[^A-Za-z0-9_-]/g, '');
+const returnTo = installParams.get('returnTo') || (orgParam ? 'portal.html?org=' + orgParam : 'login.html');
+
+// If already running as an installed app, skip straight to the destination.
+if (isStandalone) {
+  sessionStorage.setItem('sms_came_from_install', '1');
+  window.location.replace(returnTo);
+}
+
+const ua = navigator.userAgent;
+const isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /android/i.test(ua);
+const isChromeLike = /chrome|chromium|edg/i.test(ua) && !/edg.*iOS/i.test(ua);
+
+const platformBadge = document.getElementById('platformBadge');
+const statusLine = document.getElementById('statusLine');
+let deferredPrompt = null;
+
+function showBlock(id){
+  ['androidDesktopBlock','iosBlock','unsupportedBlock'].forEach(b=>{
+    document.getElementById(b).style.display = (b===id) ? 'block' : 'none';
+  });
+}
+
+if (isIOS) {
+  platformBadge.textContent = 'iOS Device';
+  showBlock('iosBlock');
+} else if (isAndroid || isChromeLike) {
+  platformBadge.textContent = isAndroid ? 'Android Device' : 'Desktop Browser';
+  showBlock('androidDesktopBlock');
+} else {
+  platformBadge.textContent = 'Unrecognized Browser';
+  showBlock('unsupportedBlock');
+}
+
+// Chrome/Edge/Android install flow
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('installBtn');
+  btn.disabled = false;
+  btn.textContent = 'Install Now';
+});
+
+// If beforeinstallprompt never fires within 2.5s, show manual fallback instructions
+setTimeout(() => {
+  if (!deferredPrompt && (isAndroid || isChromeLike)) {
+    document.getElementById('installBtn').textContent = 'Waiting for browser install support…';
+    document.getElementById('adFallback').style.display = 'block';
+  }
+}, 2500);
+
+document.getElementById('installBtn')?.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const choice = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  if (choice.outcome === 'accepted') {
+    statusLine.textContent = 'Installing… opening app…';
+  } else {
+    statusLine.textContent = 'Install dismissed — tap Install Now to try again.';
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  statusLine.textContent = 'Installed! Opening OKV School Management System…';
+  sessionStorage.setItem('sms_came_from_install', '1');
+  setTimeout(() => { window.location.href = returnTo; }, 900);
+});
+
+// Manual continue, for cases where appinstalled doesn't fire reliably (mainly iOS
+// after they've completed the manual steps and reopened from the Home Screen icon
+// — this link is only useful if they're already standalone, in which case the
+// guard at the top of this script has already redirected them).
+document.getElementById('continueLink').style.display = 'inline-block';
+document.getElementById('continueLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  sessionStorage.setItem('sms_came_from_install', '1');
+  window.location.href = returnTo;
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

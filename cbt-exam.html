@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>CBT Test / Exam — OKV School Management System</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#14213D;min-height:100vh;font-family:system-ui,sans-serif;padding:1rem;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .card-panel{background:#fff;border-radius:16px;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.35);margin-bottom:1rem;}
+  h1{font-size:1.2rem;font-weight:800;color:#14213D;text-align:center;margin-bottom:1rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  .test-card{border:1px solid #DCD0B4;border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem;}
+  .test-card .topic{font-weight:700;color:#14213D;}
+  .test-card .meta{font-size:.78rem;color:#7a7259;}
+  .warn-box{background:#FCF3DA;border:1px solid #E8D27A;border-radius:10px;padding:.8rem 1rem;font-size:.85rem;color:#5b5442;}
+  .center-msg{text-align:center;padding:2rem 1rem;}
+  .center-msg i{font-size:2.2rem;color:#93672B;}
+
+  /* ===== EXAM MODE ===== */
+  body.exam-mode{background:#FAF6EC;user-select:none;-webkit-user-select:none;}
+  #examScreen{display:none;max-width:760px;margin:0 auto;}
+  .exam-top{position:sticky;top:0;background:#14213D;color:#fff;border-radius:12px;padding:.7rem 1rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;z-index:10;flex-wrap:wrap;gap:.5rem;}
+  .exam-top .studentName{font-size:.82rem;opacity:.85;}
+  .timer{font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums;}
+  .timer.low{color:#FF9E9E;}
+  .qnav{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:1rem;}
+  .qnav button{width:34px;height:34px;border-radius:8px;border:1px solid #DCD0B4;background:#fff;font-size:.75rem;font-weight:700;color:#5b5442;}
+  .qnav button.answered{background:#DFF3E4;border-color:#2F6B4F;color:#1E6B3A;}
+  .qnav button.current{background:#14213D;border-color:#14213D;color:#fff;}
+  .q-text{font-size:1rem;font-weight:600;color:#14213D;margin-bottom:1rem;}
+  .opt-choice{border:1px solid #DCD0B4;border-radius:10px;padding:.7rem .9rem;margin-bottom:.6rem;cursor:pointer;}
+  .opt-choice.selected{background:#F1E7D3;border-color:#B8863B;}
+  .opt-choice input{margin-right:.6rem;}
+  .exam-nav-btns{display:flex;justify-content:space-between;gap:.5rem;margin-top:1rem;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="publicWrap">
+  <h1><i class="bi bi-laptop"></i> CBT Test / Exam</h1>
+
+  <!-- Step 1: identify student -->
+  <div class="card-panel" id="lookupCard">
+    <div id="noOrgNote" class="small text-danger" style="display:none;">This link is missing school information. Please use the exact link your school shared.</div>
+    <form id="lookupForm">
+      <div class="mb-2">
+        <label class="form-label small fw-bold">Admission Number <span class="text-muted fw-normal">(CAPITAL LETTERS)</span></label>
+        <input class="form-control" id="admissionNo" required placeholder="e.g. OKV/2026/0142" style="text-transform:uppercase;" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">Surname <span class="text-muted fw-normal">(CAPITAL LETTERS)</span></label>
+        <input class="form-control" id="fullNameInput" required placeholder="e.g. OKONKWO" style="text-transform:uppercase;" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="btn btn-forest w-100" id="lookupBtn">Find My Tests</button>
+      <div id="lookupMsg" class="small text-center mt-2"></div>
+    </form>
+  </div>
+
+  <!-- Step 1b: test list -->
+  <div class="card-panel" id="listCard" style="display:none;">
+    <div class="small text-muted mb-2" id="listStudentName"></div>
+    <div id="testListBody"></div>
+    <button class="btn btn-outline-secondary btn-sm mt-2" id="backToLookupBtn">← Back</button>
+  </div>
+
+  <!-- Step 2: instructions -->
+  <div class="card-panel" id="instructionsCard" style="display:none;">
+    <h2 id="instTopic" style="font-size:1.05rem;font-weight:700;color:#14213D;"></h2>
+    <div class="small text-muted mb-2" id="instMeta"></div>
+    <div class="warn-box mb-3" id="instText"></div>
+    <div class="warn-box mb-3">
+      <i class="bi bi-exclamation-triangle"></i> Once you start: do not leave this page, switch tabs/apps, or exit fullscreen — doing so will submit your test automatically, exactly as it stands. You cannot pause or resume.
+    </div>
+    <button class="btn btn-forest w-100" id="startExamBtn">Start Test</button>
+    <button class="btn btn-outline-secondary btn-sm w-100 mt-2" id="backToListBtn">← Back to list</button>
+    <div id="startMsg" class="small text-center mt-2"></div>
+  </div>
+</div>
+
+<!-- Exam mode -->
+<div id="examScreen">
+  <div class="exam-top">
+    <div>
+      <div class="fw-bold" id="examTopic"></div>
+      <div class="studentName" id="examStudentName"></div>
+    </div>
+    <div class="timer" id="examTimer">--:--</div>
+  </div>
+
+  <div class="qnav" id="qNav"></div>
+
+  <div class="card-panel">
+    <div class="q-text" id="qText"></div>
+    <div id="qOptions"></div>
+    <div class="exam-nav-btns">
+      <button class="btn btn-outline-secondary" id="prevBtn"><i class="bi bi-arrow-left"></i> Previous</button>
+      <button class="btn btn-outline-secondary" id="nextBtn">Next <i class="bi bi-arrow-right"></i></button>
+      <button class="btn btn-forest" id="submitBtn" style="display:none;"><i class="bi bi-check2"></i> Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Result / status screens -->
+<div class="wrap" id="doneWrap" style="display:none;">
+  <div class="card-panel center-msg">
+    <i class="bi bi-check-circle" id="doneIcon"></i>
+    <h2 style="font-size:1.1rem;font-weight:700;color:#14213D;margin-top:.6rem;" id="doneTitle">Test Submitted</h2>
+    <div class="text-muted" id="doneMsg"></div>
+  </div>
+</div>
+
+<script>
+/* Entry guard: like the staff app, a first-time visitor here is sent through the
+   install screen first, then returned here afterward. Once installed (standalone),
+   or once they've come through the install flow this session, this is a no-op. */
+(function(){
+  const isStandaloneNow = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  // A "direct" link (?direct=1) skips the install screen for visitors who only want to use the portal in their browser.
+  if (new URLSearchParams(window.location.search).get('direct') === '1') sessionStorage.setItem('sms_came_from_install', '1');
+  if (!isStandaloneNow && !sessionStorage.getItem('sms_came_from_install')) {
+    window.location.replace('install.html?returnTo=' + encodeURIComponent(window.location.href));
+  }
+})();
+
+const params = new URLSearchParams(window.location.search);
+const orgId = params.get('org');
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+if (!orgId) document.getElementById('noOrgNote').style.display = 'block';
+
+/* Admission number and surname are typed in CAPITAL LETTERS. Phones that start lower-case are corrected as they type. */
+function forceCaps(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => { const s = el.selectionStart, e = el.selectionEnd; el.value = el.value.toUpperCase(); try { el.setSelectionRange(s, e); } catch (x) {} });
+}
+forceCaps('admissionNo'); forceCaps('fullNameInput');
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, orgId })
+  });
+  return res.json();
+}
+
+let studentInfo = { admissionNo:'', fullName:'', name:'' };
+let currentExam = null; // { submissionId, questions, answers[], currentIndex, timerHandle, deadline }
+let examEnded = false;
+
+/* ============================== STEP 1: LOOKUP ============================== */
+document.getElementById('lookupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!orgId){ return; }
+  const admissionNo = document.getElementById('admissionNo').value.trim();
+  const fullName = document.getElementById('fullNameInput').value.trim();
+  const msg = document.getElementById('lookupMsg');
+  msg.textContent = 'Looking up your tests…'; msg.className = 'small text-center mt-2 text-muted';
+  document.getElementById('lookupBtn').disabled = true;
+
+  const resp = await apiCall({ action:'publicListAvailableCbtTests', admissionNo, surname: fullName });
+  document.getElementById('lookupBtn').disabled = false;
+  if (!resp.ok){ msg.textContent = resp.error; msg.className = 'small text-center mt-2 text-danger'; return; }
+
+  studentInfo = { admissionNo, fullName, name: resp.studentName };
+  document.getElementById('listStudentName').textContent = `Hello, ${resp.studentName}`;
+  const body = document.getElementById('testListBody');
+
+  if (!resp.tests.length){
+    body.innerHTML = `<div class="center-msg"><i class="bi bi-inbox"></i><div class="mt-2 text-muted">No test/exam available right now.</div></div>`;
+  } else {
+    body.innerHTML = resp.tests.map(t => `
+      <div class="test-card">
+        <div class="topic">${t.topic}</div>
+        <div class="meta">${t.subject} · ${t.questionCount} question${t.questionCount===1?'':'s'} · ${t.allocatedMinutes} min</div>
+        <button class="btn btn-sm btn-forest mt-2 open-test-btn" data-id="${t.testId}" data-topic="${t.topic}" data-subject="${t.subject}" data-minutes="${t.allocatedMinutes}">Open</button>
+      </div>`).join('');
+    body.querySelectorAll('.open-test-btn').forEach(b => b.addEventListener('click', () => openInstructions(resp.tests.find(t=>t.testId===b.dataset.id))));
+  }
+
+  document.getElementById('lookupCard').style.display = 'none';
+  document.getElementById('listCard').style.display = 'block';
+});
+document.getElementById('backToLookupBtn').addEventListener('click', () => {
+  document.getElementById('listCard').style.display = 'none';
+  document.getElementById('lookupCard').style.display = 'block';
+});
+
+/* ============================== STEP 2: INSTRUCTIONS ============================== */
+let pendingTest = null;
+function openInstructions(test){
+  pendingTest = test;
+  document.getElementById('instTopic').textContent = test.topic;
+  document.getElementById('instMeta').textContent = `${test.subject} · ${test.questionCount} questions · ${test.allocatedMinutes} minutes`;
+  document.getElementById('instText').textContent = 'Read carefully before you begin.';
+  document.getElementById('listCard').style.display = 'none';
+  document.getElementById('instructionsCard').style.display = 'block';
+}
+document.getElementById('backToListBtn').addEventListener('click', () => {
+  document.getElementById('instructionsCard').style.display = 'none';
+  document.getElementById('listCard').style.display = 'block';
+});
+
+document.getElementById('startExamBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('startMsg');
+  msg.textContent = 'Starting…'; msg.className = 'small text-center mt-2 text-muted';
+  document.getElementById('startExamBtn').disabled = true;
+
+  const resp = await apiCall({ action:'publicStartCbtTest', admissionNo: studentInfo.admissionNo, surname: studentInfo.fullName, testId: pendingTest.testId });
+  if (!resp.ok){
+    msg.textContent = resp.error; msg.className = 'small text-center mt-2 text-danger';
+    document.getElementById('startExamBtn').disabled = false;
+    return;
+  }
+  document.getElementById('instText').textContent = resp.instructions || 'Read carefully before you begin.';
+  beginExam(resp);
+});
+
+/* ============================== STEP 3: EXAM ============================== */
+function beginExam(resp){
+  currentExam = {
+    submissionId: resp.submissionId,
+    topic: resp.topic,
+    questions: resp.questions,
+    answers: new Array(resp.questions.length).fill(null),
+    currentIndex: 0
+  };
+
+  document.getElementById('publicWrap').style.display = 'none';
+  document.getElementById('examScreen').style.display = 'block';
+  document.body.classList.add('exam-mode');
+  document.getElementById('examTopic').textContent = resp.topic;
+  document.getElementById('examStudentName').textContent = resp.studentName;
+  // Hide the portal tab bar during the exam — it must not be a tempting way to leave.
+  const navEl = document.getElementById('portalNav');
+  if (navEl) navEl.style.display = 'none';
+
+  requestFullscreen();
+  armAntiCheat();
+
+  const totalSeconds = Math.max(1, Math.floor(
+    Math.min(resp.allocatedMinutes * 60, (new Date(resp.stopTime).getTime() - Date.now()) / 1000)
+  ));
+  startTimer(totalSeconds);
+
+  renderQNav();
+  renderQuestion();
+}
+
+function requestFullscreen(){
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (req) { try { req.call(el); } catch(e){} }
+}
+function exitFullscreen(){
+  const ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) { try { ex.call(document); } catch(e){} }
+}
+
+function startTimer(totalSeconds){
+  let remaining = totalSeconds;
+  const el = document.getElementById('examTimer');
+  function tick(){
+    if (examEnded) return;
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    el.classList.toggle('low', remaining <= 60);
+    if (remaining <= 0){
+      submitExam('time-up');
+      return;
+    }
+    remaining--;
+  }
+  tick();
+  currentExam.timerHandle = setInterval(tick, 1000);
+}
+
+/* Anti-cheat: leaving the tab/app, exiting fullscreen, or closing the page all force an
+   immediate auto-submit of whatever is currently answered. Copy/right-click are disabled
+   as a deterrent. Note: a web page cannot technically prevent OS-level screenshots — this
+   is a hard platform limitation, not something any web app (including this one) can close. */
+function armAntiCheat(){
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('blur', onWindowBlur);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('contextmenu', preventDefault);
+  document.addEventListener('copy', preventDefault);
+  document.addEventListener('cut', preventDefault);
+  window.addEventListener('beforeunload', onBeforeUnload);
+}
+function disarmAntiCheat(){
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('blur', onWindowBlur);
+  document.removeEventListener('fullscreenchange', onFullscreenChange);
+  document.removeEventListener('contextmenu', preventDefault);
+  document.removeEventListener('copy', preventDefault);
+  document.removeEventListener('cut', preventDefault);
+  window.removeEventListener('beforeunload', onBeforeUnload);
+}
+function preventDefault(e){ e.preventDefault(); return false; }
+function onVisibilityChange(){ if (document.hidden && !examEnded) submitExam('left-page'); }
+function onWindowBlur(){ if (!examEnded) submitExam('lost-focus'); }
+function onFullscreenChange(){
+  if (!examEnded && !document.fullscreenElement && !document.webkitFullscreenElement) submitExam('exited-fullscreen');
+}
+function onBeforeUnload(e){
+  if (examEnded) return;
+  // Best-effort: sendBeacon survives page unload better than a normal fetch.
+  // No confirmation dialog here on purpose — the moment they act to leave,
+  // the submission is already sent; there's nothing to "cancel" back into.
+  try {
+    const blob = new Blob([JSON.stringify({
+      action:'publicSubmitCbtTest', orgId, submissionId: currentExam.submissionId,
+      answers: currentExam.answers, autoReason:'closed-tab'
+    })], { type:'text/plain;charset=utf-8' });
+    navigator.sendBeacon(window.SMS_API_URL, blob);
+  } catch(err){}
+}
+
+function renderQNav(){
+  const nav = document.getElementById('qNav');
+  nav.innerHTML = currentExam.questions.map((q,i) => `<button data-i="${i}"></button>`).join('');
+  nav.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { currentExam.currentIndex = Number(b.dataset.i); renderQuestion(); }));
+  updateQNav();
+}
+function updateQNav(){
+  document.querySelectorAll('#qNav button').forEach((b,i) => {
+    b.classList.toggle('answered', currentExam.answers[i] !== null);
+    b.classList.toggle('current', i === currentExam.currentIndex);
+    b.textContent = i+1;
+  });
+}
+
+function renderQuestion(){
+  const i = currentExam.currentIndex;
+  const q = currentExam.questions[i];
+  document.getElementById('qText').textContent = `${i+1}. ${q.text}`;
+  document.getElementById('qOptions').innerHTML = q.options.map((opt, oi) => `
+    <label class="opt-choice ${currentExam.answers[i]===oi?'selected':''}" data-oi="${oi}">
+      <input type="radio" name="opt" ${currentExam.answers[i]===oi?'checked':''}> ${opt}
+    </label>`).join('');
+  document.querySelectorAll('.opt-choice').forEach(el => el.addEventListener('click', () => {
+    currentExam.answers[i] = Number(el.dataset.oi);
+    renderQuestion();
+    updateQNav();
+  }));
+
+  document.getElementById('prevBtn').style.visibility = i === 0 ? 'hidden' : 'visible';
+  const isLast = i === currentExam.questions.length - 1;
+  document.getElementById('nextBtn').style.display = isLast ? 'none' : 'inline-block';
+  document.getElementById('submitBtn').style.display = isLast ? 'inline-block' : 'none';
+}
+document.getElementById('prevBtn').addEventListener('click', () => { if (currentExam.currentIndex>0){ currentExam.currentIndex--; renderQuestion(); updateQNav(); } });
+document.getElementById('nextBtn').addEventListener('click', () => { if (currentExam.currentIndex<currentExam.questions.length-1){ currentExam.currentIndex++; renderQuestion(); updateQNav(); } });
+document.getElementById('submitBtn').addEventListener('click', () => {
+  const unanswered = currentExam.answers.filter(a => a === null).length;
+  const proceed = unanswered
+    ? confirm(`You have ${unanswered} unanswered question${unanswered===1?'':'s'}. Submit anyway?`)
+    : confirm('Submit your test now? You cannot change your answers after this.');
+  if (proceed) submitExam('manual');
+});
+
+async function submitExam(reason){
+  if (examEnded) return;
+  examEnded = true;
+  clearInterval(currentExam.timerHandle);
+  disarmAntiCheat();
+  exitFullscreen();
+
+  let resp;
+  try {
+    resp = await apiCall({ action:'publicSubmitCbtTest', submissionId: currentExam.submissionId, answers: currentExam.answers, autoReason: reason });
+  } catch (err) {
+    resp = { ok:false, error:'Could not reach the server to submit. If you still have a connection, please try again immediately.' };
+  }
+
+  document.getElementById('examScreen').style.display = 'none';
+  document.body.classList.remove('exam-mode');
+  document.getElementById('doneWrap').style.display = 'block';
+  const navEl2 = document.getElementById('portalNav');
+  if (navEl2) navEl2.style.display = 'flex';
+
+  const reasonText = {
+    'manual': 'Your test/exam has been submitted.',
+    'time-up': 'Time is up — your test/exam has been submitted automatically.',
+    'left-page': 'You left the page, so your test/exam was submitted automatically.',
+    'lost-focus': 'You switched away from this window, so your test/exam was submitted automatically.',
+    'exited-fullscreen': 'You exited fullscreen, so your test/exam was submitted automatically.',
+    'closed-tab': 'Your test/exam was submitted automatically.'
+  }[reason] || 'Your test/exam has been submitted.';
+
+  if (resp.ok) {
+    document.getElementById('doneIcon').className = 'bi bi-check-circle';
+    document.getElementById('doneTitle').textContent = 'Test Submitted';
+    document.getElementById('doneMsg').textContent = resp.alreadySubmitted
+      ? 'This test was already submitted.'
+      : `${reasonText} Score: ${resp.score} / ${resp.total}.`;
+  } else {
+    document.getElementById('doneIcon').className = 'bi bi-exclamation-triangle';
+    document.getElementById('doneTitle').textContent = 'Submission Issue';
+    document.getElementById('doneMsg').textContent = resp.error || 'Something went wrong submitting your test. Please contact your school immediately.';
+  }
+}
+</script>
+<script src="portal-nav.js"></script>
+<script>renderPortalNav('cbt');</script>
+</body>
+</html>
