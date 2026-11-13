@@ -7,7 +7,7 @@
  * It looks like:  https://script.google.com/macros/s/AKfycb.../exec
  *******************************************************************/
 window.SMS_CONFIG = {
-  apiUrl: 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE'
+  apiUrl: 'https://script.google.com/macros/s/AKfycbz1gxcVp4Cj4SZsyeT5XP3OIQc1YOX0bMpxptoMR8nuy8D0L3pJQsNi3ro2NkQWi_Sjkg/exec'
 };
 // Older code reads this name; both always match.
 window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
