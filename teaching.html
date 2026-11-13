@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — My Teaching</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  h2{font-size:1rem;font-weight:700;color:#14213D;margin:0 0 .5rem;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.1rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  table{font-size:.82rem;} th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .note{font-size:.82rem;color:#8A6A12;background:#FCF3DA;border-radius:10px;padding:.6rem .8rem;margin-bottom:.8rem;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .topic{border-left:3px solid #B8863B;padding:.35rem .6rem;margin-bottom:.4rem;background:#FFFCF4;border-radius:6px;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — you can read your curriculum. Uploads and downloads need the internet.</div>
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>My Teaching</h1>
+      <div class="sync-status" id="syncStatusText">Checking…</div>
+    </div>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+  </div>
+
+  <div class="card-panel">
+    <h2>My classes and subjects</h2>
+    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Class</th><th>Arm</th><th>Subject</th><th>Branch</th></tr></thead><tbody id="slotBody"></tbody></table></div>
+    <div class="note" id="noSlots" style="display:none;">You have no classes or subjects assigned yet. Ask your school administrator to assign them under Curriculum &amp; Subjects.</div>
+  </div>
+
+  <div class="card-panel">
+    <h2>Curriculum for my classes</h2>
+    <div id="topicList"></div>
+  </div>
+
+  <div class="card-panel">
+    <h2>Teaching materials</h2>
+    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Title</th><th>Class</th><th>Subject</th><th>File</th><th></th></tr></thead><tbody id="matBody"></tbody></table></div>
+  </div>
+
+  <div class="card-panel">
+    <h2>Upload a material for my class</h2>
+    <div class="small text-muted mb-2">PDF, Word, PowerPoint, Excel, Markdown (.md), text, CSV or image, up to 8 MB. You can upload only for the classes and subjects assigned to you.</div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-6"><label class="form-label small mb-1">Class, arm and subject</label><select class="form-select form-select-sm" id="up_slot"></select></div>
+      <div class="col-md-6"><label class="form-label small mb-1">Topic (optional)</label><select class="form-select form-select-sm" id="up_topic"></select></div>
+      <div class="col-md-6"><label class="form-label small mb-1">Title</label><input class="form-control form-control-sm" id="up_title" placeholder="e.g. Week 3 notes"></div>
+      <div class="col-md-6"><label class="form-label small mb-1">File</label><input type="file" class="form-control form-control-sm" id="up_file"></div>
+    </div>
+    <button class="btn btn-sm btn-forest" id="upBtn"><i class="bi bi-upload"></i> Upload</button>
+    <span class="small text-muted ms-2" id="upStatus"></span>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const API_URL = window.SMS_CONFIG.apiUrl;
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session) { window.top.location.href = 'dashboard.html'; }
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let settings = null, mySlots = [], topicRecs = [], materialRecs = [];
+const slotKey = (c, a, s) => [c||'', a||'', s||''].join('|');
+const slotLabel = p => `${p.class}${p.arm ? ' ' + p.arm : ''} · ${p.subject}`;
+
+async function apiCall(payload){
+  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken }) });
+  return res.json();
+}
+const mineKeys = () => new Set(mySlots.map(p => slotKey(p.class, p.arm, p.subject)));
+
+function renderSlots(){
+  document.getElementById('slotBody').innerHTML = mySlots.map(p => `<tr><td>${esc(p.class)}</td><td>${esc(p.arm||'—')}</td><td>${esc(p.subject)}</td><td>${esc(p.schoolName||'—')}</td></tr>`).join('');
+  document.getElementById('noSlots').style.display = mySlots.length ? 'none' : 'block';
+  const sel = document.getElementById('up_slot');
+  sel.innerHTML = mySlots.length ? mySlots.map((p, i) => `<option value="${i}">${esc(slotLabel(p))}</option>`).join('') : '<option value="">No assignments yet</option>';
+  renderUploadTopics();
+}
+function renderUploadTopics(){
+  const p = mySlots[Number(document.getElementById('up_slot').value)];
+  const list = p ? topicRecs.filter(r => r.payload.class === p.class && (r.payload.arm||'') === (p.arm||'') && r.payload.subject === p.subject) : [];
+  document.getElementById('up_topic').innerHTML = '<option value="">(none)</option>' + list.map(r => `<option value="${r.recordId}">${esc(r.payload.title)}</option>`).join('');
+}
+function renderTopics(){
+  const keys = mineKeys();
+  const termOrder = { 'First Term':1, 'Second Term':2, 'Third Term':3 };
+  const rows = topicRecs.filter(r => keys.has(slotKey(r.payload.class, r.payload.arm, r.payload.subject)))
+    .sort((a,b) => (a.payload.class||'').localeCompare(b.payload.class||'') || (termOrder[a.payload.term]||0)-(termOrder[b.payload.term]||0) || (a.payload.order||0)-(b.payload.order||0));
+  let html = '', lastGroup = '';
+  rows.forEach(r => {
+    const group = `${r.payload.class}${r.payload.arm ? ' ' + r.payload.arm : ''} · ${r.payload.subject} · ${r.payload.term}`;
+    if (group !== lastGroup) { html += `<h3 style="font-size:.9rem;margin-top:.8rem;">${esc(group)}</h3>`; lastGroup = group; }
+    html += `<div class="topic"><b>${esc(r.payload.order)}.</b> ${esc(r.payload.title)}${r.payload.objectives ? `<div class="small text-muted">${esc(r.payload.objectives)}</div>` : ''}</div>`;
+  });
+  document.getElementById('topicList').innerHTML = html || '<div class="small text-muted">No curriculum topics for your classes yet.</div>';
+}
+function renderMaterials(){
+  const keys = mineKeys();
+  const rows = materialRecs.filter(r => keys.has(slotKey(r.payload.class, r.payload.arm, r.payload.subject)))
+    .sort((a,b) => (b.payload.uploadedAt||'').localeCompare(a.payload.uploadedAt||''));
+  document.getElementById('matBody').innerHTML = rows.map(r => `<tr><td>${esc(r.payload.title)}</td><td>${esc(r.payload.class)}${r.payload.arm ? ' ' + esc(r.payload.arm) : ''}</td><td>${esc(r.payload.subject)}</td>
+    <td>${esc(r.payload.fileName)}<div class="small text-muted">${esc(r.payload.uploadedByName||'')}</div></td>
+    <td class="text-end"><button class="btn btn-sm btn-outline-secondary mat-dl" data-id="${r.recordId}">Download</button></td></tr>`).join('')
+    || '<tr><td colspan="5" class="text-center text-muted py-2">No materials for your classes yet.</td></tr>';
+  document.querySelectorAll('.mat-dl').forEach(b => b.addEventListener('click', () => downloadMaterial(b.dataset.id)));
+}
+async function downloadMaterial(recordId){
+  if (!navigator.onLine) { alert('Downloads need the internet.'); return; }
+  const resp = await apiCall({ action: 'downloadMaterial', recordId });
+  if (!resp.ok) { alert(resp.error); return; }
+  const bytes = Uint8Array.from(atob(resp.dataBase64), c => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: resp.mimeType || 'application/octet-stream' }));
+  const a = document.createElement('a'); a.href = url; a.download = resp.fileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+function readBase64(file){
+  return new Promise((resolve, reject) => { const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]); r.onerror = reject; r.readAsDataURL(file); });
+}
+document.getElementById('up_slot').addEventListener('change', renderUploadTopics);
+document.getElementById('upBtn').addEventListener('click', async () => {
+  const status = document.getElementById('upStatus');
+  if (!navigator.onLine) { alert('Uploads need the internet. Connect and try again.'); return; }
+  const p = mySlots[Number(document.getElementById('up_slot').value)];
+  const file = document.getElementById('up_file').files[0];
+  const title = document.getElementById('up_title').value.trim();
+  if (!p || !file || !title) { alert('Choose a class and subject, enter a title, and choose a file.'); return; }
+  if (file.size > 8 * 1024 * 1024) { alert('This file is larger than 8 MB. Compress it, or split it into parts.'); return; }
+  status.textContent = 'Uploading…';
+  const resp = await apiCall({ action: 'uploadMaterial', title, subject: p.subject, class: p.class, arm: p.arm || '',
+    topicId: document.getElementById('up_topic').value, schoolId: p.schoolId || '', fileName: file.name,
+    mimeType: file.type, dataBase64: await readBase64(file) });
+  if (!resp.ok) { status.textContent = ''; alert(resp.error); return; }
+  materialRecs = await window.smsSync.getRecords('material');
+  document.getElementById('up_title').value = ''; document.getElementById('up_file').value = '';
+  status.textContent = 'Uploaded.'; renderMaterials();
+});
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settings = payload;
+  const schoolName = id => { const s = (settings.schools||[]).find(x => x.id === id); return s ? s.name : ''; };
+  const assigns = await window.smsSync.getRecords('subjectAssignment');
+  mySlots = assigns.filter(r => r.payload.teacherUserId === session.userId)
+    .map(r => ({ ...r.payload, schoolName: schoolName(r.payload.schoolId) }));
+  topicRecs = await window.smsSync.getRecords('topic');
+  materialRecs = await window.smsSync.getRecords('material');
+  renderSlots(); renderTopics(); renderMaterials();
+  document.getElementById('syncStatusText').textContent = navigator.onLine ? 'Online' : 'Offline — showing saved data';
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Announcements</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:760px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .ann-item{border-bottom:1px solid #F1E7D3;padding:.8rem 0;}
+  .ann-item:last-child{border-bottom:none;}
+  .ann-item .title{font-weight:700;color:#14213D;font-size:.95rem;}
+  .ann-item .meta{font-size:.72rem;color:#a79572;margin-bottom:.3rem;}
+  .ann-item .msg{font-size:.85rem;color:#3d3826;white-space:pre-wrap;}
+  .audience-chip{display:inline-block;background:#F1E7D3;color:#93672B;font-size:.68rem;font-weight:600;padding:.15em .5em;border-radius:5px;margin:1px 2px 1px 0;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — showing last synced announcements.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>Announcements</h1>
+      <div class="sync-status" id="syncStatusText"><span class="dot offline"></span>Checking…</div>
+    </div>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+  </div>
+
+  <div class="card-panel" id="composeCard" style="display:none;">
+    <h2 style="font-size:1rem;font-weight:700;color:#14213D;">New Announcement</h2>
+    <div class="mb-2"><input class="form-control form-control-sm" id="a_title" placeholder="Title"></div>
+    <div class="mb-2"><textarea class="form-control form-control-sm" id="a_message" rows="3" placeholder="Message"></textarea></div>
+    <div class="mb-2">
+      <label class="form-label small">Audience</label>
+      <div>
+        <div class="form-check form-check-inline"><input class="form-check-input aud-cb" type="checkbox" value="Everyone" id="aud_everyone" checked><label class="form-check-label small" for="aud_everyone">Everyone</label></div>
+      </div>
+      <div id="aud_roles"></div>
+    </div>
+    <div class="mb-2" id="a_schoolWrap" style="display:none;">
+      <label class="form-label small">School / Branch (optional — leave as "All" for an org-wide announcement)</label>
+      <select class="form-select form-select-sm" id="a_school"><option value="">All Schools/Branches</option></select>
+    </div>
+    <button class="btn btn-sm btn-forest" id="postBtn">Post Announcement</button>
+  </div>
+
+  <div class="card-panel">
+    <div id="annList"></div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session){ window.top.location.href = 'login.html'; }
+const WRITE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const ADMIN_TIER = ['Super Administrator','School Administrator'];
+const roles = session.roles || [];
+const canWrite = roles.some(r => WRITE_ROLES.includes(r));
+const isAdminTier = roles.some(r => ADMIN_TIER.includes(r));
+const myAssignedSchools = session.assignedSchoolIds || [];
+const ALL_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher','Bursar / Accountant','Result Viewer / Parent Portal User'];
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+function renderSyncStatus(detail){
+  const el = document.getElementById('syncStatusText');
+  const dotClass = detail.syncing ? 'syncing' : (detail.online ? 'online' : 'offline');
+  const label = detail.syncing ? 'Syncing…' : (detail.online ? 'Online' : 'Offline');
+  const pendingTxt = detail.pending ? ` — ${detail.pending} pending` : '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span>${label}${pendingTxt}`;
+}
+window.smsSync.onStatus(renderSyncStatus);
+
+if (canWrite){
+  document.getElementById('composeCard').style.display = 'block';
+  document.getElementById('aud_roles').innerHTML = ALL_ROLES.map(r => `
+    <div class="form-check form-check-inline">
+      <input class="form-check-input aud-cb role-cb" type="checkbox" value="${r}" id="aud_${r.replace(/[^a-zA-Z0-9]/g,'')}">
+      <label class="form-check-label small" for="aud_${r.replace(/[^a-zA-Z0-9]/g,'')}">${r}</label>
+    </div>`).join('');
+  document.getElementById('aud_everyone').addEventListener('change', (e) => {
+    document.querySelectorAll('.role-cb').forEach(cb => cb.disabled = e.target.checked);
+  });
+}
+
+let announcements = [];
+let orgSchools = [];
+
+function timeAgo(iso){
+  const d = new Date(iso);
+  return d.toLocaleString();
+}
+
+function schoolAllowed(payload){
+  if (!payload.schoolId) return true; // org-wide announcement
+  if (isAdminTier) return true;
+  return myAssignedSchools.includes(payload.schoolId);
+}
+function audienceAllowed(payload){
+  if (canWrite) return true; // composers see everything they manage, regardless of targeting
+  if ((payload.audience||[]).includes('Everyone')) return true;
+  return (payload.audience||[]).some(a => roles.includes(a));
+}
+function schoolLabel(id){
+  if (!id) return '';
+  const s = orgSchools.find(x => x.id === id);
+  return s ? s.name : id;
+}
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  orgSchools = payload.schools || [];
+  if (orgSchools.length && canWrite) {
+    document.getElementById('a_schoolWrap').style.display = 'block';
+    document.getElementById('a_school').innerHTML = '<option value="">All Schools/Branches</option>' +
+      orgSchools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  }
+
+  announcements = await window.smsSync.getRecords('announcement');
+  announcements.sort((a,b) => new Date(b.payload.createdAt||0) - new Date(a.payload.createdAt||0));
+  const visible = announcements.filter(r => schoolAllowed(r.payload) && audienceAllowed(r.payload));
+
+  document.getElementById('annList').innerHTML = visible.map(r => {
+    const p = r.payload;
+    const audienceHtml = (p.audience||[]).map(a => `<span class="audience-chip">${a}</span>`).join('') +
+      (p.schoolId ? `<span class="audience-chip">${escapeHtml(schoolLabel(p.schoolId))}</span>` : '');
+    return `<div class="ann-item">
+      <div class="title">${escapeHtml(p.title)}</div>
+      <div class="meta">${timeAgo(p.createdAt)} · ${audienceHtml}</div>
+      <div class="msg">${escapeHtml(p.message)}</div>
+      ${canWrite ? `<button class="btn btn-sm btn-outline-danger mt-2 del-btn" data-id="${r.recordId}">Delete</button>` : ''}
+    </div>`;
+  }).join('') || '<div class="small text-muted py-3 text-center">No announcements yet.</div>';
+
+  document.querySelectorAll('.del-btn').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this announcement?')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    announcements = announcements.filter(r => r.recordId !== b.dataset.id);
+    loadAll();
+  }));
+}
+
+document.getElementById('postBtn')?.addEventListener('click', async () => {
+  const title = document.getElementById('a_title').value.trim();
+  const message = document.getElementById('a_message').value.trim();
+  if (!title || !message){ alert('Title and message are required.'); return; }
+  const everyone = document.getElementById('aud_everyone').checked;
+  const audience = everyone ? ['Everyone'] : Array.from(document.querySelectorAll('.role-cb:checked')).map(cb => cb.value);
+  if (!audience.length){ alert('Choose at least one audience, or select Everyone.'); return; }
+  const schoolId = orgSchools.length ? document.getElementById('a_school').value : '';
+
+  const payload = { title, message, audience, schoolId, createdBy: session.userId, createdByName: session.fullName || session.username, createdAt: new Date().toISOString() };
+  await window.smsSync.saveRecord('announcement', payload, null);
+  document.getElementById('a_title').value = ''; document.getElementById('a_message').value = '';
+  loadAll();
+});
+
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

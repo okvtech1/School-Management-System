@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Curriculum &amp; Subjects</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  h2{font-size:1rem;font-weight:700;color:#14213D;margin:0 0 .5rem;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.1rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  .tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;}
+  .tab-btn{border:1px solid #DCD0B4;background:#fff;border-radius:999px;padding:.35rem .9rem;font-size:.85rem;color:#14213D;}
+  .tab-btn.active{background:#14213D;color:#fff;border-color:#14213D;}
+  .panel{display:none;} .panel.active{display:block;}
+  table{font-size:.82rem;} th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .note{font-size:.82rem;color:#8A6A12;background:#FCF3DA;border-radius:10px;padding:.6rem .8rem;margin-bottom:.8rem;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .matrix td,.matrix th{text-align:center;vertical-align:middle;}
+  .matrix td:first-child,.matrix th:first-child{text-align:left;white-space:nowrap;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — subjects, topics and assignments are saved locally and sync later. File uploads and downloads need the internet.</div>
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>Curriculum &amp; Subjects</h1>
+      <div class="sync-status" id="syncStatusText">Checking…</div>
+    </div>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+  </div>
+
+  <div id="noPermNote" class="note" style="display:none;"></div>
+
+  <div class="card-panel">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-6" id="branchWrap" style="display:none;">
+        <label class="form-label small mb-1">Branch</label>
+        <select class="form-select form-select-sm" id="branchSel"></select>
+        <div class="form-text">Subjects, topics, teacher assignments and materials are kept per branch. Pick "All branches" only for things every branch shares.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="subjects">1. Subjects</button>
+    <button class="tab-btn" data-tab="curriculum">2. Curriculum</button>
+    <button class="tab-btn" data-tab="assign">3. Teacher assignments</button>
+    <button class="tab-btn" data-tab="materials">4. Materials</button>
+  </div>
+
+  <!-- 1. SUBJECTS -->
+  <div class="panel active" id="tab-subjects">
+    <div class="card-panel">
+      <h2>Subjects</h2>
+      <div class="small text-muted mb-2">Create the subjects this school (or this branch) teaches. A subject appears in curriculum, teacher assignments and materials.</div>
+      <div class="row g-2 mb-2" id="subjectForm">
+        <div class="col-md-6"><input class="form-control form-control-sm" id="sub_name" placeholder="Subject name, e.g. Mathematics"></div>
+        <div class="col-md-3"><input class="form-control form-control-sm" id="sub_code" placeholder="Code (optional)"></div>
+        <div class="col-md-3"><button class="btn btn-sm btn-forest w-100" id="subAddBtn">Add subject</button></div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary mb-2" id="subImportBtn"><i class="bi bi-magic"></i> Import subjects from Settings</button>
+      <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Subject</th><th>Code</th><th>Branch</th><th></th></tr></thead><tbody id="subBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- 2. CURRICULUM -->
+  <div class="panel" id="tab-curriculum">
+    <div class="card-panel">
+      <h2>Curriculum topics</h2>
+      <div class="small text-muted mb-2">The topics each class covers, term by term, in order. Teachers see these for the classes they are assigned.</div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-3"><label class="form-label small mb-1">Class</label><select class="form-select form-select-sm" id="cu_class"></select></div>
+        <div class="col-md-2"><label class="form-label small mb-1">Arm</label><select class="form-select form-select-sm" id="cu_arm"></select></div>
+        <div class="col-md-3"><label class="form-label small mb-1">Subject</label><select class="form-select form-select-sm" id="cu_subject"></select></div>
+        <div class="col-md-2"><label class="form-label small mb-1">Term</label><select class="form-select form-select-sm" id="cu_term"><option>First Term</option><option>Second Term</option><option>Third Term</option></select></div>
+        <div class="col-md-2"><label class="form-label small mb-1">Order</label><input type="number" min="1" class="form-control form-control-sm" id="cu_order" value="1"></div>
+        <div class="col-md-8"><label class="form-label small mb-1">Topic / week title</label><input class="form-control form-control-sm" id="cu_title" placeholder="e.g. Fractions: addition and subtraction"></div>
+        <div class="col-md-4 d-flex align-items-end"><button class="btn btn-sm btn-forest w-100" id="cuAddBtn">Add topic</button></div>
+        <div class="col-12"><label class="form-label small mb-1">Learning objectives (optional)</label><textarea class="form-control form-control-sm" id="cu_obj" rows="2" placeholder="What pupils should be able to do by the end of this topic"></textarea></div>
+      </div>
+      <div class="d-flex gap-2 align-items-center mb-2"><span class="small">Show:</span><select class="form-select form-select-sm" id="cuFilterClass" style="max-width:220px;"></select></div>
+      <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Class</th><th>Arm</th><th>Subject</th><th>Term</th><th>#</th><th>Topic</th><th></th></tr></thead><tbody id="cuBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- 3. TEACHER ASSIGNMENTS -->
+  <div class="panel" id="tab-assign">
+    <div class="card-panel">
+      <h2>Assign subjects and classes to a teacher</h2>
+      <div class="small text-muted mb-2">Pick a teacher, then tick every class and subject they teach in this branch. Saving updates the teacher's assignments for this branch: unticked boxes are removed.</div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-6"><label class="form-label small mb-1">Teacher</label><select class="form-select form-select-sm" id="as_teacher"></select></div>
+      </div>
+      <div class="table-responsive"><table class="table table-sm matrix" id="asMatrix"></table></div>
+      <div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-forest" id="asSaveBtn">Save assignments</button><span class="small text-muted align-self-center" id="asStatus"></span></div>
+    </div>
+    <div class="card-panel">
+      <h2>Current assignments in this branch</h2>
+      <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Teacher</th><th>Class</th><th>Arm</th><th>Subject</th></tr></thead><tbody id="asBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- 4. MATERIALS -->
+  <div class="panel" id="tab-materials">
+    <div class="card-panel">
+      <h2>Upload teaching material</h2>
+      <div class="small text-muted mb-2">PDF, Word, PowerPoint, Excel, Markdown (.md), text, CSV or image files, up to 8 MB each. Teachers see a file only for the class and subject they are assigned.</div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-3"><label class="form-label small mb-1">Class</label><select class="form-select form-select-sm" id="mt_class"></select></div>
+        <div class="col-md-2"><label class="form-label small mb-1">Arm</label><select class="form-select form-select-sm" id="mt_arm"></select></div>
+        <div class="col-md-3"><label class="form-label small mb-1">Subject</label><select class="form-select form-select-sm" id="mt_subject"></select></div>
+        <div class="col-md-4"><label class="form-label small mb-1">Topic (optional)</label><select class="form-select form-select-sm" id="mt_topic"></select></div>
+        <div class="col-md-6"><label class="form-label small mb-1">Title</label><input class="form-control form-control-sm" id="mt_title" placeholder="e.g. Week 3 notes: Fractions"></div>
+        <div class="col-md-6"><label class="form-label small mb-1">File</label><input type="file" class="form-control form-control-sm" id="mt_file"></div>
+      </div>
+      <button class="btn btn-sm btn-forest" id="mtUploadBtn"><i class="bi bi-upload"></i> Upload</button>
+      <span class="small text-muted ms-2" id="mtStatus"></span>
+    </div>
+    <div class="card-panel">
+      <h2>Materials</h2>
+      <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Title</th><th>Class</th><th>Subject</th><th>File</th><th>Uploaded by</th><th></th></tr></thead><tbody id="mtBody"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const API_URL = window.SMS_CONFIG.apiUrl;
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const READ_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => READ_ROLES.includes(r))) { window.top.location.href = 'dashboard.html'; }
+
+let settings = null, curBranch = '', teachers = [];
+let subjectRecs = [], topicRecs = [], assignRecs = [], materialRecs = [];
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const branchName = id => { if (!id) return 'All branches'; const s = (settings.schools||[]).find(x => x.id === id); return s ? s.name : id; };
+const inBranch = rec => { const sid = rec.payload.schoolId || ''; return sid === curBranch || sid === ''; };
+const slotKey = (c, a, s) => [c||'', a||'', s||''].join('|');
+
+async function apiCall(payload){
+  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken }) });
+  return res.json();
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + b.dataset.tab));
+}));
+
+/* ---------- class / arm / subject selectors ---------- */
+function allSubjectNames(){
+  const fromRecs = subjectRecs.filter(inBranch).map(r => r.payload.name);
+  const fromSettings = [...(settings.subjects||[]), ...Object.values(settings.subjectsBySection||{}).flat()];
+  return [...new Set([...fromRecs, ...fromSettings].filter(Boolean))].sort();
+}
+function fillClassSel(sel, withAll){
+  const cls = settings.classes || [];
+  sel.innerHTML = (withAll ? '<option value="">All classes</option>' : '') + cls.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+}
+function fillArmSel(sel, cls){
+  const arms = (settings.classArms||{})[cls] || [];
+  sel.innerHTML = arms.length ? arms.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('') : '<option value="">(no arm)</option>';
+}
+function fillSubjectSel(sel, cls){
+  const names = (window.smsSettings.subjectsForClass(settings, cls) || []).filter(Boolean);
+  const merged = [...new Set([...names, ...allSubjectNames()])];
+  sel.innerHTML = merged.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+}
+function fillTopicSel(sel, cls, arm, subject){
+  const list = topicRecs.filter(r => inBranch(r) && r.payload.class === cls && (r.payload.arm||'') === (arm||'') && r.payload.subject === subject);
+  sel.innerHTML = '<option value="">(none)</option>' + list.map(r => `<option value="${r.recordId}">${esc(r.payload.title)}</option>`).join('');
+}
+function refreshCurriculumSelectors(){
+  fillArmSel(document.getElementById('cu_arm'), document.getElementById('cu_class').value);
+  fillSubjectSel(document.getElementById('cu_subject'), document.getElementById('cu_class').value);
+  fillArmSel(document.getElementById('mt_arm'), document.getElementById('mt_class').value);
+  fillSubjectSel(document.getElementById('mt_subject'), document.getElementById('mt_class').value);
+  fillTopicSel(document.getElementById('mt_topic'), document.getElementById('mt_class').value, document.getElementById('mt_arm').value, document.getElementById('mt_subject').value);
+}
+
+/* ---------- SUBJECTS ---------- */
+function renderSubjects(){
+  const body = document.getElementById('subBody');
+  const rows = subjectRecs.filter(inBranch).sort((a,b) => a.payload.name.localeCompare(b.payload.name));
+  body.innerHTML = rows.map(r => `<tr><td>${esc(r.payload.name)}</td><td>${esc(r.payload.code||'—')}</td><td>${esc(branchName(r.payload.schoolId))}</td>
+    <td class="text-end"><button class="btn btn-sm btn-outline-danger sub-del" data-id="${r.recordId}">Remove</button></td></tr>`).join('')
+    || '<tr><td colspan="4" class="text-center text-muted py-2">No subjects yet. Add them above, or import from Settings.</td></tr>';
+  body.querySelectorAll('.sub-del').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Remove this subject? Topics and assignments that use it are kept, but will show the old name.')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    subjectRecs = subjectRecs.filter(r => r.recordId !== b.dataset.id); renderAll();
+  }));
+}
+document.getElementById('subAddBtn').addEventListener('click', async () => {
+  const name = document.getElementById('sub_name').value.trim();
+  if (!name) { alert('Enter a subject name.'); return; }
+  if (subjectRecs.some(r => inBranch(r) && r.payload.name.toLowerCase() === name.toLowerCase())) { alert('That subject already exists for this branch.'); return; }
+  const payload = { name, code: document.getElementById('sub_code').value.trim(), schoolId: curBranch };
+  const id = await window.smsSync.saveRecord('subject', payload, null);
+  subjectRecs.push({ recordId: id, type: 'subject', payload });
+  document.getElementById('sub_name').value = ''; document.getElementById('sub_code').value = ''; renderAll();
+});
+document.getElementById('subImportBtn').addEventListener('click', async () => {
+  const names = [...new Set([...(settings.subjects||[]), ...Object.values(settings.subjectsBySection||{}).flat()].filter(Boolean))];
+  const existing = new Set(subjectRecs.filter(inBranch).map(r => r.payload.name.toLowerCase()));
+  let added = 0;
+  for (const name of names) {
+    if (existing.has(name.toLowerCase())) continue;
+    const payload = { name, code: '', schoolId: curBranch };
+    const id = await window.smsSync.saveRecord('subject', payload, null);
+    subjectRecs.push({ recordId: id, type: 'subject', payload }); added++;
+  }
+  alert(added ? `Added ${added} subject(s) from Settings.` : 'Every subject in Settings is already listed.');
+  renderAll();
+});
+
+/* ---------- CURRICULUM ---------- */
+function renderTopics(){
+  const f = document.getElementById('cuFilterClass').value;
+  const body = document.getElementById('cuBody');
+  const termOrder = { 'First Term':1, 'Second Term':2, 'Third Term':3 };
+  const rows = topicRecs.filter(inBranch).filter(r => !f || r.payload.class === f)
+    .sort((a,b) => (a.payload.class||'').localeCompare(b.payload.class||'') || (termOrder[a.payload.term]||0) - (termOrder[b.payload.term]||0) || (a.payload.order||0) - (b.payload.order||0));
+  body.innerHTML = rows.map(r => `<tr><td>${esc(r.payload.class)}</td><td>${esc(r.payload.arm||'—')}</td><td>${esc(r.payload.subject)}</td><td>${esc(r.payload.term)}</td><td>${esc(r.payload.order)}</td>
+    <td>${esc(r.payload.title)}${r.payload.objectives ? `<div class="small text-muted">${esc(r.payload.objectives)}</div>` : ''}</td>
+    <td class="text-end"><button class="btn btn-sm btn-outline-danger cu-del" data-id="${r.recordId}">Remove</button></td></tr>`).join('')
+    || '<tr><td colspan="7" class="text-center text-muted py-2">No topics for this view yet.</td></tr>';
+  body.querySelectorAll('.cu-del').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Remove this topic?')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    topicRecs = topicRecs.filter(r => r.recordId !== b.dataset.id); renderAll();
+  }));
+}
+document.getElementById('cu_class').addEventListener('change', refreshCurriculumSelectors);
+document.getElementById('cu_arm').addEventListener('change', () => {});
+document.getElementById('cuFilterClass').addEventListener('change', renderTopics);
+document.getElementById('cuAddBtn').addEventListener('click', async () => {
+  const cls = document.getElementById('cu_class').value, arm = document.getElementById('cu_arm').value;
+  const subject = document.getElementById('cu_subject').value, title = document.getElementById('cu_title').value.trim();
+  if (!cls || !subject || !title) { alert('Choose a class and subject, and enter a topic title.'); return; }
+  const payload = { class: cls, arm: arm || '', subject, term: document.getElementById('cu_term').value,
+    order: Number(document.getElementById('cu_order').value) || 1, title, objectives: document.getElementById('cu_obj').value.trim(), schoolId: curBranch };
+  const id = await window.smsSync.saveRecord('topic', payload, null);
+  topicRecs.push({ recordId: id, type: 'topic', payload });
+  document.getElementById('cu_title').value = ''; document.getElementById('cu_obj').value = '';
+  document.getElementById('cu_order').value = Number(document.getElementById('cu_order').value || 1) + 1;
+  renderAll();
+});
+
+/* ---------- TEACHER ASSIGNMENTS (bulk matrix) ---------- */
+function gridRows(){
+  const out = [];
+  (settings.classes||[]).forEach(c => {
+    const arms = (settings.classArms||{})[c] || [];
+    (arms.length ? arms : ['']).forEach(a => out.push({ cls: c, arm: a }));
+  });
+  return out;
+}
+function renderMatrix(){
+  const teacherId = document.getElementById('as_teacher').value;
+  const subjects = allSubjectNames();
+  const grid = gridRows();
+  const tbl = document.getElementById('asMatrix');
+  if (!teacherId || !subjects.length || !grid.length) {
+    tbl.innerHTML = '<tbody><tr><td class="text-muted">Choose a teacher. You need classes (Settings) and subjects (step 1) first.</td></tr></tbody>';
+    return;
+  }
+  const mine = new Set(assignRecs.filter(r => r.payload.teacherUserId === teacherId && (r.payload.schoolId||'') === curBranch)
+    .map(r => slotKey(r.payload.class, r.payload.arm, r.payload.subject)));
+  tbl.innerHTML = `<thead><tr><th>Class / arm</th>${subjects.map(s => `<th>${esc(s)}</th>`).join('')}</tr></thead><tbody>` +
+    grid.map(g => `<tr><td>${esc(g.cls)}${g.arm ? ' ' + esc(g.arm) : ''}</td>` + subjects.map(s => {
+      const k = slotKey(g.cls, g.arm, s);
+      return `<td><input type="checkbox" class="form-check-input as-cell" data-k="${esc(k)}" ${mine.has(k) ? 'checked' : ''}></td>`;
+    }).join('') + '</tr>').join('') + '</tbody>';
+}
+function renderAssignments(){
+  const body = document.getElementById('asBody');
+  const rows = assignRecs.filter(r => (r.payload.schoolId||'') === curBranch)
+    .sort((a,b) => (a.payload.class||'').localeCompare(b.payload.class||'') || (a.payload.arm||'').localeCompare(b.payload.arm||''));
+  const tname = id => { const t = teachers.find(x => x.userId === id); return t ? t.fullName : '(removed user)'; };
+  body.innerHTML = rows.map(r => `<tr><td>${esc(tname(r.payload.teacherUserId))}</td><td>${esc(r.payload.class)}</td><td>${esc(r.payload.arm||'—')}</td><td>${esc(r.payload.subject)}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="text-center text-muted py-2">No assignments in this branch yet.</td></tr>';
+}
+document.getElementById('as_teacher').addEventListener('change', renderMatrix);
+document.getElementById('asSaveBtn').addEventListener('click', async () => {
+  const teacherId = document.getElementById('as_teacher').value;
+  if (!teacherId) { alert('Choose a teacher first.'); return; }
+  const ticked = new Map();
+  document.querySelectorAll('.as-cell').forEach(cb => { if (cb.checked) ticked.set(cb.dataset.k, true); });
+  const existing = assignRecs.filter(r => r.payload.teacherUserId === teacherId && (r.payload.schoolId||'') === curBranch);
+  const existingKeys = new Set(existing.map(r => slotKey(r.payload.class, r.payload.arm, r.payload.subject)));
+  const status = document.getElementById('asStatus'); status.textContent = 'Saving…';
+  for (const r of existing) {
+    if (!ticked.has(slotKey(r.payload.class, r.payload.arm, r.payload.subject))) {
+      await window.smsSync.deleteRecord(r.recordId);
+      assignRecs = assignRecs.filter(x => x.recordId !== r.recordId);
+    }
+  }
+  for (const g of gridRows()) for (const s of allSubjectNames()) {
+    const k = slotKey(g.cls, g.arm, s);
+    if (ticked.has(k) && !existingKeys.has(k)) {
+      const payload = { class: g.cls, arm: g.arm || '', subject: s, teacherUserId: teacherId, schoolId: curBranch };
+      const id = await window.smsSync.saveRecord('subjectAssignment', payload, null);
+      assignRecs.push({ recordId: id, type: 'subjectAssignment', payload });
+    }
+  }
+  status.textContent = 'Saved.'; renderMatrix(); renderAssignments();
+});
+
+/* ---------- MATERIALS ---------- */
+function renderMaterials(){
+  const body = document.getElementById('mtBody');
+  const rows = materialRecs.filter(inBranch).sort((a,b) => (b.payload.uploadedAt||'').localeCompare(a.payload.uploadedAt||''));
+  body.innerHTML = rows.map(r => `<tr><td>${esc(r.payload.title)}</td><td>${esc(r.payload.class)}${r.payload.arm ? ' ' + esc(r.payload.arm) : ''}</td><td>${esc(r.payload.subject)}</td>
+    <td>${esc(r.payload.fileName)}<div class="small text-muted">${Math.round((r.payload.size||0)/1024)} KB</div></td><td>${esc(r.payload.uploadedByName||'')}</td>
+    <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-secondary mt-dl" data-id="${r.recordId}">Download</button>
+    <button class="btn btn-sm btn-outline-danger mt-del" data-id="${r.recordId}">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="text-center text-muted py-2">No materials uploaded yet.</td></tr>';
+  body.querySelectorAll('.mt-dl').forEach(b => b.addEventListener('click', () => downloadMaterial(b.dataset.id)));
+  body.querySelectorAll('.mt-del').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this file for everyone?')) return;
+    const resp = await apiCall({ action: 'deleteMaterial', recordId: b.dataset.id });
+    if (!resp.ok) { alert(resp.error); return; }
+    materialRecs = materialRecs.filter(r => r.recordId !== b.dataset.id); renderMaterials();
+  }));
+}
+async function downloadMaterial(recordId){
+  if (!navigator.onLine) { alert('Downloads need the internet.'); return; }
+  const resp = await apiCall({ action: 'downloadMaterial', recordId });
+  if (!resp.ok) { alert(resp.error); return; }
+  const bytes = Uint8Array.from(atob(resp.dataBase64), c => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: resp.mimeType || 'application/octet-stream' }));
+  const a = document.createElement('a'); a.href = url; a.download = resp.fileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+function readBase64(file){
+  return new Promise((resolve, reject) => { const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]); r.onerror = reject; r.readAsDataURL(file); });
+}
+document.getElementById('mt_class').addEventListener('change', refreshCurriculumSelectors);
+document.getElementById('mt_arm').addEventListener('change', refreshCurriculumSelectors);
+document.getElementById('mt_subject').addEventListener('change', refreshCurriculumSelectors);
+document.getElementById('mtUploadBtn').addEventListener('click', async () => {
+  const status = document.getElementById('mtStatus');
+  if (!navigator.onLine) { alert('Uploads need the internet. Connect and try again.'); return; }
+  const file = document.getElementById('mt_file').files[0];
+  const cls = document.getElementById('mt_class').value, subject = document.getElementById('mt_subject').value;
+  const title = document.getElementById('mt_title').value.trim();
+  if (!file || !cls || !subject || !title) { alert('Choose class, subject, a title and a file.'); return; }
+  if (file.size > 8 * 1024 * 1024) { alert('This file is larger than 8 MB. Compress it, or split it into parts.'); return; }
+  status.textContent = 'Uploading…';
+  const resp = await apiCall({ action: 'uploadMaterial', title, subject, class: cls, arm: document.getElementById('mt_arm').value,
+    topicId: document.getElementById('mt_topic').value, schoolId: curBranch, fileName: file.name,
+    mimeType: file.type, dataBase64: await readBase64(file) });
+  if (!resp.ok) { status.textContent = ''; alert(resp.error); return; }
+  materialRecs = await window.smsSync.getRecords('material');
+  document.getElementById('mt_title').value = ''; document.getElementById('mt_file').value = '';
+  status.textContent = 'Uploaded.'; renderMaterials();
+});
+
+/* ---------- branch + load ---------- */
+document.getElementById('branchSel').addEventListener('change', e => { curBranch = e.target.value; renderAll(); });
+function renderAll(){
+  renderSubjects(); renderTopics(); renderMatrix(); renderAssignments(); renderMaterials(); refreshCurriculumSelectors();
+}
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settings = payload;
+  const schools = settings.schools || [];
+  if (schools.length) {
+    document.getElementById('branchWrap').style.display = 'block';
+    document.getElementById('branchSel').innerHTML = `<option value="">All branches (shared)</option>` +
+      schools.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    curBranch = settings.activeSchoolId || schools[0].id;
+    document.getElementById('branchSel').value = curBranch;
+  }
+  if (!roles.some(r => ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'].includes(r))) {
+    document.getElementById('noPermNote').style.display = 'block';
+    document.getElementById('noPermNote').textContent = 'Only school administrators and academic staff can manage curriculum.';
+  }
+  fillClassSel(document.getElementById('cu_class'));
+  fillClassSel(document.getElementById('cuFilterClass'), true);
+  fillClassSel(document.getElementById('mt_class'));
+  const resp = await apiCall({ action: 'listOrgUsersBasic' });
+  teachers = resp.ok ? resp.users.filter(u => (u.roles||[]).includes('Teacher')) : [];
+  document.getElementById('as_teacher').innerHTML = teachers.length
+    ? '<option value="">— choose a teacher —</option>' + teachers.map(t => `<option value="${esc(t.userId)}">${esc(t.fullName)} (${esc(t.username)})</option>`).join('')
+    : '<option value="">No Teacher-role users yet</option>';
+  subjectRecs = await window.smsSync.getRecords('subject');
+  topicRecs = await window.smsSync.getRecords('topic');
+  assignRecs = await window.smsSync.getRecords('subjectAssignment');
+  materialRecs = await window.smsSync.getRecords('material');
+  refreshCurriculumSelectors();
+  renderAll();
+  document.getElementById('syncStatusText').textContent = navigator.onLine ? 'Online' : 'Offline — changes sync later';
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

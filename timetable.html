@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Timetable</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1100px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  table{font-size:.8rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .form-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;}
+  .form-row .fld{min-width:120px;flex:1;}
+  .form-row label{font-size:.75rem;font-weight:600;color:#7a7259;display:block;margin-bottom:.2rem;}
+  .no-perm-note{font-size:.82rem;color:#8A6A12;background:#FCF3DA;border-radius:10px;padding:.6rem .8rem;margin-bottom:1rem;}
+  .grid-table td, .grid-table th{vertical-align:top;}
+  .slot-chip{display:block;background:#F1E7D3;color:#3d3826;border-radius:6px;padding:.2rem .4rem;margin-bottom:.25rem;font-size:.72rem;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+  @media print{
+    @page{size:A4 portrait;margin:10mm;}
+    #formCard, .no-perm-note, #noPermNote, .tt-del, #ttPrintBtn, .row.g-2{display:none !important;}
+    .grid-table{font-size:8pt;width:100%;border-collapse:collapse;}
+    .grid-table th{background:var(--sch-primary) !important;color:var(--sch-on-primary) !important;font-size:7pt;padding:2mm 1mm !important;text-align:center;}
+    .grid-table td{padding:2mm 1.2mm !important;height:15mm;vertical-align:top;border:.25mm solid #cfcfc8 !important;}
+    .grid-table td:first-child{font-weight:800;color:var(--sch-primary);width:20mm;background:var(--sch-tint) !important;}
+    .slot-chip{background:var(--sch-tint) !important;border-left:1mm solid var(--sch-accent);padding:.8mm 1.4mm !important;border-radius:.8mm;margin-bottom:.8mm;}
+    .table-responsive{overflow:visible !important;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — changes are saved locally and will sync once you're back online.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>Timetable</h1>
+      <div class="sync-status" id="syncStatusText"><span class="dot offline"></span>Checking…</div>
+    </div>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+  </div>
+
+  <div id="noPermNote" class="no-perm-note" style="display:none;">You can view the timetable, but only Super Administrator, School Administrator, Principal / Head Teacher, or Academic Officer / Exam Officer can add or change entries.</div>
+
+  <div class="card-panel" id="formCard">
+    <h2 style="font-size:1rem;font-weight:700;color:#14213D;">Add a Period</h2>
+    <div class="form-row">
+      <div class="fld" id="f_schoolWrap" style="display:none;"><label>School</label><select class="form-select form-select-sm" id="f_school"></select></div>
+      <div class="fld"><label>Class</label><select class="form-select form-select-sm" id="f_class"></select></div>
+      <div class="fld"><label>Arm</label><select class="form-select form-select-sm" id="f_arm"></select></div>
+      <div class="fld"><label>Day</label>
+        <select class="form-select form-select-sm" id="f_day">
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option>
+        </select>
+      </div>
+      <div class="fld"><label>Period</label>
+        <select class="form-select form-select-sm" id="f_period">
+          <option>Period 1</option><option>Period 2</option><option>Period 3</option><option>Period 4</option>
+          <option>Period 5</option><option>Period 6</option><option>Period 7</option><option>Period 8</option>
+        </select>
+      </div>
+      <div class="fld"><label>Subject</label><select class="form-select form-select-sm" id="f_subject"></select></div>
+      <div class="fld"><label>Teacher</label><select class="form-select form-select-sm" id="f_teacher"></select></div>
+      <div><button class="btn btn-sm btn-forest" id="saveBtn">Add</button></div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-auto">
+        <label class="form-label small">View by</label>
+        <select class="form-select form-select-sm" id="viewMode" style="max-width:160px;">
+          <option value="class">Class</option>
+          <option value="teacher">Teacher</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select class="form-select form-select-sm" id="viewFilter" style="min-width:200px;"></select>
+      </div>
+      <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" id="ttPrintBtn"><i class="bi bi-printer"></i> Print timetable</button></div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-bordered grid-table">
+        <thead><tr><th>Day</th><th>Period 1</th><th>Period 2</th><th>Period 3</th><th>Period 4</th><th>Period 5</th><th>Period 6</th><th>Period 7</th><th>Period 8</th></tr></thead>
+        <tbody id="gridBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="print-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session){ window.top.location.href = 'login.html'; }
+const WRITE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const roles = session.roles || [];
+const canWrite = roles.some(r => WRITE_ROLES.includes(r));
+if (!canWrite) { document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('noPermNote').style.display = 'block';
+  document.getElementById('formCard').style.display = 'none';
+});}
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+function renderSyncStatus(detail){
+  const el = document.getElementById('syncStatusText');
+  const dotClass = detail.syncing ? 'syncing' : (detail.online ? 'online' : 'offline');
+  const label = detail.syncing ? 'Syncing…' : (detail.online ? 'Online' : 'Offline');
+  const pendingTxt = detail.pending ? ` — ${detail.pending} pending` : '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span>${label}${pendingTxt}`;
+}
+window.smsSync.onStatus(renderSyncStatus);
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  return res.json();
+}
+
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+const PERIODS = ['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6','Period 7','Period 8'];
+
+let settingsState = null;
+let teachers = [];
+let entries = [];
+
+function fillArmSelect(sel, cls){
+  const arms = (settingsState.classArms||{})[cls] || [];
+  sel.innerHTML = arms.length ? arms.map(a=>`<option value="${a}">${a}</option>`).join('') : '<option value="">(no arms)</option>';
+}
+function teacherName(userId){
+  const t = teachers.find(x=>x.userId===userId);
+  return t ? t.fullName : userId;
+}
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsState = payload;
+
+  const schools = settingsState.schools || [];
+  if (schools.length) {
+    document.getElementById('f_schoolWrap').style.display = 'block';
+    document.getElementById('f_school').innerHTML = schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  }
+
+  document.getElementById('f_class').innerHTML = (settingsState.classes||[]).map(c=>`<option value="${c}">${c}</option>`).join('');
+  fillArmSelect(document.getElementById('f_arm'), document.getElementById('f_class').value);
+  document.getElementById('f_class').addEventListener('change', (e)=> fillArmSelect(document.getElementById('f_arm'), e.target.value));
+  function fillTimetableSubjects(){
+    const subs = window.smsSettings.subjectsForClass(settingsState, document.getElementById('f_class').value);
+    document.getElementById('f_subject').innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  }
+  fillTimetableSubjects();
+  document.getElementById('f_class').addEventListener('change', fillTimetableSubjects);
+
+  const resp = await apiCall({ action:'listOrgUsersBasic' });
+  teachers = resp.ok ? resp.users.filter(u => (u.roles||[]).includes('Teacher')) : [];
+  document.getElementById('f_teacher').innerHTML = teachers.length
+    ? teachers.map(t=>`<option value="${t.userId}">${t.fullName}</option>`).join('')
+    : '<option value="">No Teacher-role users yet</option>';
+
+  entries = await window.smsSync.getRecords('timetableEntry');
+
+  buildViewFilterOptions();
+  document.getElementById('viewMode').addEventListener('change', () => { buildViewFilterOptions(); renderGrid(); });
+  document.getElementById('viewFilter').addEventListener('change', renderGrid);
+  renderGrid();
+}
+
+function buildViewFilterOptions(){
+  const mode = document.getElementById('viewMode').value;
+  const sel = document.getElementById('viewFilter');
+  const schools = settingsState.schools || [];
+  if (mode === 'class'){
+    sel.innerHTML = (settingsState.classes||[]).flatMap(c => {
+      const arms = (settingsState.classArms||{})[c] || [''];
+      if (!schools.length) return arms.map(a => `<option value="|${c}|${a}">${c}${a?' '+a:''}</option>`);
+      return schools.flatMap(s => arms.map(a => `<option value="${s.id}|${c}|${a}">${s.name} — ${c}${a?' '+a:''}</option>`));
+    }).join('');
+  } else {
+    // Default to the logged-in teacher if they are one, otherwise list all teachers.
+    sel.innerHTML = teachers.map(t => `<option value="${t.userId}" ${t.userId===session.userId?'selected':''}>${t.fullName}</option>`).join('')
+      || '<option value="">No Teacher-role users yet</option>';
+  }
+}
+
+function renderGrid(){
+  const mode = document.getElementById('viewMode').value;
+  const filterVal = document.getElementById('viewFilter').value;
+  const body = document.getElementById('gridBody');
+
+  body.innerHTML = DAYS.map(day => {
+    const cells = PERIODS.map(period => {
+      const matches = entries.filter(r => {
+        const p = r.payload;
+        if (p.day !== day || p.period !== period) return false;
+        if (mode === 'class'){
+          const [schoolId, cls, arm] = filterVal.split('|');
+          return p.class === cls && (p.arm||'') === (arm||'') && (p.schoolId||'') === (schoolId||'');
+        }
+        return p.teacherUserId === filterVal;
+      });
+      return `<td>${matches.map(r => `
+        <div class="slot-chip">
+          <b>${r.payload.subject}</b><br>
+          ${mode === 'class' ? teacherName(r.payload.teacherUserId) : `${r.payload.class} ${r.payload.arm||''}`}
+          ${canWrite ? ` <a href="#" class="tt-del" data-id="${r.recordId}">✕</a>` : ''}
+        </div>`).join('') || ''}</td>`;
+    }).join('');
+    return `<tr><td><b>${day}</b></td>${cells}</tr>`;
+  }).join('');
+
+  body.querySelectorAll('.tt-del').forEach(a => a.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!confirm('Remove this timetable entry?')) return;
+    await window.smsSync.deleteRecord(a.dataset.id);
+    entries = entries.filter(r => r.recordId !== a.dataset.id);
+    renderGrid();
+  }));
+}
+
+document.getElementById('ttPrintBtn').addEventListener('click', () => window.print());
+window.smsPrint.attachPage(() => {
+  const sel = document.getElementById('viewFilter');
+  const mode = document.getElementById('viewMode').value;
+  return { title: 'Class Timetable', meta: [[mode === 'class' ? 'Class' : 'Teacher', sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : ''], ['Term', (settingsState && settingsState.currentTerm) || ''], ['Session', (settingsState && settingsState.currentSession) || '']] };
+});
+
+document.getElementById('saveBtn')?.addEventListener('click', async () => {
+  const cls = document.getElementById('f_class').value;
+  const arm = document.getElementById('f_arm').value;
+  const day = document.getElementById('f_day').value;
+  const period = document.getElementById('f_period').value;
+  const subject = document.getElementById('f_subject').value;
+  const teacherUserId = document.getElementById('f_teacher').value;
+  const schoolId = (settingsState.schools||[]).length ? document.getElementById('f_school').value : '';
+  if (!cls || !subject || !teacherUserId){ alert('Fill in all fields.'); return; }
+
+  const clash = entries.find(r => r.payload.class === cls && (r.payload.arm||'')===(arm||'') && r.payload.day===day && r.payload.period===period && (r.payload.schoolId||'')===(schoolId||''));
+  if (clash && !confirm('This class already has a period here — replace it?')) return;
+
+  const payload = { class: cls, arm: arm||'', day, period, subject, teacherUserId, schoolId };
+  const newId = await window.smsSync.saveRecord('timetableEntry', payload, clash ? clash.recordId : null);
+  if (clash) clash.payload = payload;
+  else entries.push({ recordId: newId, type:'timetableEntry', payload });
+  renderGrid();
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+</body>
+</html>

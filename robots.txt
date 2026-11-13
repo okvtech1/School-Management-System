@@ -1,0 +1,52 @@
+# OKV School Management System — robots.txt
+# Replace https://YOUR-DOMAIN-HERE.com in sitemap.xml with your real hosting domain
+# once deployed (see SETUP_GUIDE.md, "Google Indexing" section, for the full walkthrough).
+
+User-agent: *
+
+# Marketing / conversion pages — fine to crawl and index.
+Allow: /index.html
+Allow: /pricing.html
+Allow: /demo.html
+Allow: /signup.html
+Allow: /terms.html
+
+# Everything else is either a private, logged-in app page, or a per-organization public
+# page (result checker, fee payment, CBT exam, portal) that only makes sense when opened
+# via a specific school's own shared link — not something that should turn up in general
+# search results.
+Disallow: /dashboard.html
+Disallow: /login.html
+Disallow: /reset-password.html
+Disallow: /install.html
+Disallow: /students.html
+Disallow: /staff.html
+Disallow: /parents.html
+Disallow: /users.html
+Disallow: /settings.html
+Disallow: /scores.html
+Disallow: /results.html
+Disallow: /assignments.html
+Disallow: /assignment-manage.html
+Disallow: /cbt-manage.html
+Disallow: /clearance.html
+Disallow: /payments.html
+Disallow: /finance.html
+Disallow: /reports.html
+Disallow: /backup.html
+Disallow: /idcards.html
+Disallow: /timetable.html
+Disallow: /announcements.html
+Disallow: /communicate.html
+Disallow: /messages.html
+Disallow: /promote.html
+Disallow: /manual.html
+Disallow: /upgrade.html
+Disallow: /superadmin.html
+Disallow: /portal.html
+Disallow: /result-check.html
+Disallow: /cbt-exam.html
+Disallow: /assignment-check.html
+Disallow: /pay-fees.html
+
+Sitemap: https://YOUR-DOMAIN-HERE.com/sitemap.xml

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Assignments — OKV School Management System</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#14213D;min-height:100vh;font-family:system-ui,sans-serif;padding:1rem;}
+  .wrap{max-width:640px;margin:0 auto;}
+  .card-panel{background:#fff;border-radius:16px;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.35);margin-bottom:1rem;}
+  h1{font-size:1.2rem;font-weight:800;color:#14213D;text-align:center;margin-bottom:1rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  .assign-card{border:1px solid #DCD0B4;border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem;}
+  .assign-card .title{font-weight:700;color:#14213D;}
+  .assign-card .meta{font-size:.78rem;color:#7a7259;}
+  .assign-card .meta.overdue{color:#8B1E3F;font-weight:700;}
+  .center-msg{text-align:center;padding:2rem 1rem;}
+  .center-msg i{font-size:2.2rem;color:#93672B;}
+  .attach-preview{max-width:100%;border-radius:8px;margin:.6rem 0;border:1px solid #DCD0B4;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="publicWrap">
+  <h1><i class="bi bi-journal-text"></i> Assignments</h1>
+
+  <!-- Step 1: identify student -->
+  <div class="card-panel" id="lookupCard">
+    <div id="noOrgNote" class="small text-danger" style="display:none;">This link is missing school information. Please use the exact link your school shared.</div>
+    <form id="lookupForm">
+      <div class="mb-2">
+        <label class="form-label small fw-bold">Admission Number <span class="text-muted fw-normal">(CAPITAL LETTERS)</span></label>
+        <input class="form-control" id="admissionNo" required placeholder="e.g. OKV/2026/0142" style="text-transform:uppercase;" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">Surname <span class="text-muted fw-normal">(CAPITAL LETTERS)</span></label>
+        <input class="form-control" id="fullNameInput" required placeholder="e.g. OKONKWO" style="text-transform:uppercase;" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="btn btn-forest w-100" id="lookupBtn">Find My Assignments</button>
+      <div id="lookupMsg" class="small text-center mt-2"></div>
+    </form>
+  </div>
+
+  <!-- Step 1b: assignment list -->
+  <div class="card-panel" id="listCard" style="display:none;">
+    <div class="small text-muted mb-2" id="listStudentName"></div>
+    <div id="assignListBody"></div>
+    <button class="btn btn-outline-secondary btn-sm mt-2" id="backToLookupBtn">← Back</button>
+  </div>
+
+  <!-- Step 2: view + respond -->
+  <div class="card-panel" id="detailCard" style="display:none;">
+    <h2 id="detailTitle" style="font-size:1.05rem;font-weight:700;color:#14213D;"></h2>
+    <div class="small text-muted mb-2" id="detailMeta"></div>
+    <div class="mb-2" style="white-space:pre-wrap;" id="detailInstructions"></div>
+    <img id="detailAttachment" class="attach-preview" style="display:none;">
+    <div class="mb-2">
+      <label class="form-label small">Your Response (optional — write an answer, or just mark it done)</label>
+      <textarea class="form-control" id="responseText" rows="4"></textarea>
+    </div>
+    <button class="btn btn-forest w-100" id="submitBtn">Submit</button>
+    <button class="btn btn-outline-secondary btn-sm w-100 mt-2" id="backToListBtn">← Back to list</button>
+    <div id="submitMsg" class="small text-center mt-2"></div>
+  </div>
+</div>
+
+<div class="wrap" id="doneWrap" style="display:none;">
+  <div class="card-panel center-msg">
+    <i class="bi bi-check-circle"></i>
+    <h2 style="font-size:1.1rem;font-weight:700;color:#14213D;margin-top:.6rem;">Submitted</h2>
+    <div class="text-muted">Your assignment response has been recorded. You can close this page or check another assignment.</div>
+    <button class="btn btn-outline-secondary btn-sm mt-3" id="checkAnotherBtn">Check Another</button>
+  </div>
+</div>
+
+<script>
+/* Entry guard: send first-time visitors through the install screen first, then
+   return here. No-op once installed (standalone) or already routed through once. */
+(function(){
+  const isStandaloneNow = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  // A "direct" link (?direct=1) skips the install screen for visitors who only want to use the portal in their browser.
+  if (new URLSearchParams(window.location.search).get('direct') === '1') sessionStorage.setItem('sms_came_from_install', '1');
+  if (!isStandaloneNow && !sessionStorage.getItem('sms_came_from_install')) {
+    window.location.replace('install.html?returnTo=' + encodeURIComponent(window.location.href));
+  }
+})();
+
+const params = new URLSearchParams(window.location.search);
+const orgId = params.get('org');
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+if (!orgId) document.getElementById('noOrgNote').style.display = 'block';
+
+/* Admission number and surname are typed in CAPITAL LETTERS. Phones that start lower-case are corrected as they type. */
+function forceCaps(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => { const s = el.selectionStart, e = el.selectionEnd; el.value = el.value.toUpperCase(); try { el.setSelectionRange(s, e); } catch (x) {} });
+}
+forceCaps('admissionNo'); forceCaps('fullNameInput');
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, orgId })
+  });
+  return res.json();
+}
+
+let studentInfo = { admissionNo:'', fullName:'', name:'' };
+let currentAssignments = [];
+let pendingAssignment = null;
+
+document.getElementById('lookupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!orgId) return;
+  const admissionNo = document.getElementById('admissionNo').value.trim();
+  const fullName = document.getElementById('fullNameInput').value.trim();
+  const msg = document.getElementById('lookupMsg');
+  msg.textContent = 'Looking up your assignments…'; msg.className = 'small text-center mt-2 text-muted';
+  document.getElementById('lookupBtn').disabled = true;
+
+  const resp = await apiCall({ action:'publicListAvailableAssignments', admissionNo, surname: fullName });
+  document.getElementById('lookupBtn').disabled = false;
+  if (!resp.ok){ msg.textContent = resp.error; msg.className = 'small text-center mt-2 text-danger'; return; }
+
+  studentInfo = { admissionNo, fullName, name: resp.studentName };
+  currentAssignments = resp.assignments;
+  document.getElementById('listStudentName').textContent = `Hello, ${resp.studentName}`;
+  const body = document.getElementById('assignListBody');
+  const today = new Date().toISOString().slice(0,10);
+
+  if (!currentAssignments.length){
+    body.innerHTML = `<div class="center-msg"><i class="bi bi-inbox"></i><div class="mt-2 text-muted">No assignments available right now.</div></div>`;
+  } else {
+    body.innerHTML = currentAssignments.map(a => {
+      const overdue = a.dueDate && a.dueDate < today;
+      return `<div class="assign-card">
+        <div class="title">${a.title}</div>
+        <div class="meta ${overdue?'overdue':''}">${a.subject}${a.dueDate ? ` · Due ${a.dueDate}${overdue?' (overdue)':''}` : ''}</div>
+        <button class="btn btn-sm btn-forest mt-2 open-btn" data-id="${a.assignmentId}">Open</button>
+      </div>`;
+    }).join('');
+    body.querySelectorAll('.open-btn').forEach(b => b.addEventListener('click', () => openDetail(currentAssignments.find(a=>a.assignmentId===b.dataset.id))));
+  }
+
+  document.getElementById('lookupCard').style.display = 'none';
+  document.getElementById('listCard').style.display = 'block';
+});
+document.getElementById('backToLookupBtn').addEventListener('click', () => {
+  document.getElementById('listCard').style.display = 'none';
+  document.getElementById('lookupCard').style.display = 'block';
+});
+
+function openDetail(a){
+  pendingAssignment = a;
+  document.getElementById('detailTitle').textContent = a.title;
+  document.getElementById('detailMeta').textContent = `${a.subject}${a.dueDate ? ` · Due ${a.dueDate}` : ''}`;
+  document.getElementById('detailInstructions').textContent = a.instructions || '';
+  const img = document.getElementById('detailAttachment');
+  if (a.attachmentUrl){ img.src = a.attachmentUrl; img.style.display = 'block'; } else { img.style.display = 'none'; }
+  document.getElementById('responseText').value = '';
+  document.getElementById('submitMsg').textContent = '';
+  document.getElementById('listCard').style.display = 'none';
+  document.getElementById('detailCard').style.display = 'block';
+}
+document.getElementById('backToListBtn').addEventListener('click', () => {
+  document.getElementById('detailCard').style.display = 'none';
+  document.getElementById('listCard').style.display = 'block';
+});
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('submitMsg');
+  msg.textContent = 'Submitting…'; msg.className = 'small text-center mt-2 text-muted';
+  document.getElementById('submitBtn').disabled = true;
+
+  const resp = await apiCall({
+    action:'publicSubmitAssignment', admissionNo: studentInfo.admissionNo, surname: studentInfo.fullName,
+    assignmentId: pendingAssignment.assignmentId, responseText: document.getElementById('responseText').value.trim()
+  });
+  document.getElementById('submitBtn').disabled = false;
+  if (!resp.ok){ msg.textContent = resp.error; msg.className = 'small text-center mt-2 text-danger'; return; }
+
+  document.getElementById('publicWrap').style.display = 'none';
+  document.getElementById('doneWrap').style.display = 'block';
+});
+document.getElementById('checkAnotherBtn').addEventListener('click', () => {
+  document.getElementById('doneWrap').style.display = 'none';
+  document.getElementById('publicWrap').style.display = 'block';
+  document.getElementById('detailCard').style.display = 'none';
+  document.getElementById('lookupCard').style.display = 'block';
+});
+</script>
+<script src="portal-nav.js"></script>
+<script>renderPortalNav('assignment');</script>
+</body>
+</html>

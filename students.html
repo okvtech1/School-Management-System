@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Students</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);}
+  table{font-size:.85rem;}
+  th{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .thumb{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#F1E7D3;}
+  .filters{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;}
+  .import-instructions{background:#FCF3DA;border:1px solid #E8D27A;border-radius:10px;padding:.9rem 1rem;font-size:.82rem;color:#5b5442;margin-bottom:1rem;}
+  .import-instructions code{background:#fff;border:1px solid #E8D27A;border-radius:4px;padding:.05rem .35rem;}
+  .import-instructions table{font-size:.78rem;margin-top:.5rem;}
+  .import-result{font-size:.82rem;white-space:pre-wrap;max-height:180px;overflow:auto;background:#FAF6EC;border-radius:8px;padding:.6rem;margin-top:.7rem;}
+  .photo-preview{width:80px;height:80px;border-radius:10px;object-fit:cover;background:#F1E7D3;display:block;margin-bottom:.5rem;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — changes are saved locally and will sync once you're back online.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>Students</h1>
+      <div class="sync-status" id="syncStatusText"><span class="dot offline"></span>Checking…</div>
+    </div>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <a class="btn btn-sm btn-outline-secondary" href="admission-list.html" id="admListLink"><i class="bi bi-printer"></i> Print admission list</a>
+      <button class="btn btn-sm btn-outline-secondary" id="exportCsvBtn"><i class="bi bi-download"></i> Export CSV</button>
+      <button class="btn btn-sm btn-outline-secondary" id="importOpenBtn" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-upload"></i> Import CSV</button>
+      <button class="btn btn-sm btn-forest" id="newBtn" data-bs-toggle="modal" data-bs-target="#recordModal">+ New Student</button>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="filters">
+      <select class="form-select form-select-sm" id="filterSchool" style="max-width:180px;display:none;"></select>
+      <select class="form-select form-select-sm" id="filterClass" style="max-width:160px;"><option value="">All Classes</option></select>
+      <input type="text" class="form-control form-control-sm" id="filterSearch" placeholder="Search name or admission no." style="max-width:240px;">
+    </div>
+    <div id="dupBanner" class="small mb-2" style="display:none;background:#FBE4E4;border:1px solid #E8B4B4;border-radius:8px;padding:.6rem .9rem;color:#8B1E3F;"></div>
+    <div class="table-responsive">
+      <table class="table" id="dataTable">
+        <thead><tr><th></th><th>Name</th><th>Admission No.</th><th>Class</th><th>Guardian Phone</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit modal -->
+<div class="modal fade" id="recordModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="modalTitle">New Student</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="f_recordId">
+        <img class="photo-preview" id="photoPreview" style="display:none;">
+        <div class="mb-2"><label class="form-label small">Photo</label><input type="file" accept="image/*" class="form-control form-control-sm" id="f_photoInput"></div>
+        <div class="mb-2"><label class="form-label small">Full Name</label><input class="form-control form-control-sm" id="f_fullName" required placeholder="e.g. OKONKWO Adaeze Grace"><div class="form-text">Start with the SURNAME. Parents and students type the surname (in capitals) on the portal.</div></div>
+        <div class="mb-2"><label class="form-label small">Admission Number <span class="text-muted">(unique for life, CAPITAL LETTERS)</span></label>
+          <div class="input-group input-group-sm"><input class="form-control form-control-sm" id="f_admissionNo" required style="text-transform:uppercase;" autocapitalize="characters" autocomplete="off" placeholder="e.g. OKV/2026/0142"><button type="button" class="btn btn-outline-secondary" id="suggestAdmBtn" title="Suggest the next free number">Next free no.</button></div>
+          <div class="form-text" id="admHint">This number belongs to this student only. It stays the same after promotion and is never given to anyone else.</div></div>
+        <div class="mb-2" id="f_schoolWrap" style="display:none;">
+          <label class="form-label small">School / Branch</label>
+          <select class="form-select form-select-sm" id="f_schoolId"></select>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col"><label class="form-label small">Class</label><select class="form-select form-select-sm" id="f_class"></select></div>
+          <div class="col"><label class="form-label small">Arm</label><select class="form-select form-select-sm" id="f_arm"></select></div>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col"><label class="form-label small">Gender</label>
+            <select class="form-select form-select-sm" id="f_gender"><option value="">—</option><option>Male</option><option>Female</option></select>
+          </div>
+          <div class="col"><label class="form-label small">Date of Birth</label><input type="date" class="form-control form-control-sm" id="f_dob"></div>
+        </div>
+        <div class="mb-2"><label class="form-label small">Guardian Phone</label><input class="form-control form-control-sm" id="f_guardianPhone"></div>
+        <div class="mb-2"><label class="form-label small">Guardian Email</label><input type="email" class="form-control form-control-sm" id="f_guardianEmail"></div>
+        <div class="mb-2"><label class="form-label small">Address</label><textarea class="form-control form-control-sm" id="f_address" rows="2"></textarea></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="f_active" checked><label class="form-check-label small" for="f_active">Active</label></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-forest" id="saveBtn">Save</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Import Students from CSV</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="import-instructions">
+          <strong>Required format</strong> — first row must be a header row with these exact column names:
+          <table class="table table-sm table-bordered">
+            <thead><tr><th>Column</th><th>Required?</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>fullName</code></td><td>Yes</td><td></td></tr>
+              <tr><td><code>admissionNo</code></td><td>Yes</td><td>Must be unique. Saved in capital letters; repeats are skipped</td></tr>
+              <tr><td><code>class</code></td><td>No</td><td>Must match a class name from Settings</td></tr>
+              <tr><td><code>arm</code></td><td>No</td><td>Must match one of that class's arms</td></tr>
+              <tr><td><code>gender</code></td><td>No</td><td><code>Male</code> or <code>Female</code></td></tr>
+              <tr><td><code>dob</code></td><td>No</td><td>Format <code>YYYY-MM-DD</code></td></tr>
+              <tr><td><code>guardianPhone</code></td><td>No</td><td></td></tr>
+              <tr><td><code>guardianEmail</code></td><td>No</td><td></td></tr>
+              <tr><td><code>address</code></td><td>No</td><td></td></tr>
+            </tbody>
+          </table>
+          Photos can't be imported via CSV — add them individually after import.
+          <div class="mt-2"><a href="#" id="downloadTemplateLink">Download a blank CSV template</a></div>
+        </div>
+        <input type="file" class="form-control" id="csvFileInput" accept=".csv">
+        <div class="import-result" id="importResult" style="display:none;"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-forest" id="importGoBtn">Import</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script src="csv-lib.js"></script>
+<script>
+const RECORD_TYPE = 'student';
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const READ_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Teacher','Bursar / Accountant'];
+const WRITE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => READ_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+const canWrite = roles.some(r => WRITE_ROLES.includes(r));
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+function renderSyncStatus(detail){
+  const el = document.getElementById('syncStatusText');
+  const dotClass = detail.syncing ? 'syncing' : (detail.online ? 'online' : 'offline');
+  const label = detail.syncing ? 'Syncing…' : (detail.online ? 'Online' : 'Offline');
+  const pendingTxt = detail.pending ? ` — ${detail.pending} pending` : '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span>${label}${pendingTxt}`;
+}
+window.smsSync.onStatus(renderSyncStatus);
+
+if (!canWrite){
+  ['newBtn','importOpenBtn'].forEach(id => document.getElementById(id).style.display = 'none');
+}
+
+let settingsPayload = window.smsSettings.defaultSettings();
+let allRecords = [];
+
+function populateClassSelects(){
+  const classes = settingsPayload.classes || [];
+  document.getElementById('filterClass').innerHTML = '<option value="">All Classes</option>' + classes.map(c=>`<option>${escapeHtml(c)}</option>`).join('');
+  document.getElementById('f_class').innerHTML = '<option value="">—</option>' + classes.map(c=>`<option>${escapeHtml(c)}</option>`).join('');
+}
+function populateArmSelect(className, selected){
+  const arms = (settingsPayload.classArms || {})[className] || [];
+  document.getElementById('f_arm').innerHTML = '<option value="">—</option>' + arms.map(a=>`<option ${a===selected?'selected':''}>${escapeHtml(a)}</option>`).join('');
+}
+document.getElementById('f_class').addEventListener('change', (e)=> populateArmSelect(e.target.value, ''));
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsPayload = payload;
+  populateClassSelects();
+  populateSchoolSelects();
+  allRecords = await window.smsSync.getRecords(RECORD_TYPE);
+  renderTable();
+}
+
+
+/* ============================== UNIQUE ADMISSION NUMBERS ============================== */
+// Same canonical form the server uses: capital letters, no spaces.
+function normAdm(s){ return String(s == null ? '' : s).toUpperCase().replace(/\s+/g, ''); }
+// Every student counts (active or not): a number is never handed to a second child, even after the first leaves.
+function findAdmissionHolder(norm, exceptRecordId){
+  return allRecords.find(r => r.recordId !== exceptRecordId && normAdm(r.payload.admissionNo) === norm) || null;
+}
+function describeStudent(rec){ const p = rec.payload; return `${p.fullName || 'another student'}${p.class ? ' (' + p.class + (p.arm ? ' ' + p.arm : '') + ')' : ''}`; }
+
+// Next number in the school's own pattern: take the most recently added number, bump its trailing digits, skip any that are taken.
+function suggestNextAdmissionNo(){
+  const used = new Set(allRecords.map(r => normAdm(r.payload.admissionNo)));
+  const sorted = allRecords.slice().sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0));
+  const last = sorted.map(r => normAdm(r.payload.admissionNo)).find(n => /\d+$/.test(n));
+  if (!last) return 'STU-0001';
+  const m = last.match(/^(.*?)(\d+)$/);
+  let n = parseInt(m[2], 10);
+  for (let i = 0; i < 5000; i++) {
+    n++;
+    const cand = m[1] + String(n).padStart(m[2].length, '0');
+    if (!used.has(cand)) return cand;
+  }
+  return last + '-NEW';
+}
+
+// Warns about numbers that were already shared before this rule existed, with a list to fix.
+function renderDuplicateBanner(){
+  const box = document.getElementById('dupBanner');
+  const groups = {};
+  allRecords.forEach(r => { const k = normAdm(r.payload.admissionNo); if (k) (groups[k] = groups[k] || []).push(r); });
+  const dups = Object.keys(groups).filter(k => groups[k].length > 1);
+  if (!dups.length){ box.style.display = 'none'; return; }
+  box.innerHTML = `<b><i class="bi bi-exclamation-triangle"></i> ${dups.length} admission number${dups.length===1?' is':'s are'} shared by more than one student.</b> Every student needs their own number. Edit one student in each group below to give them a different number.` +
+    '<ul class="mb-0 mt-1">' + dups.slice(0, 12).map(k => `<li><b>${escapeHtml(k)}</b>: ${groups[k].map(r => escapeHtml(describeStudent(r))).join(' &nbsp;&bull;&nbsp; ')}</li>`).join('') + '</ul>';
+  box.style.display = 'block';
+}
+document.getElementById('f_admissionNo').addEventListener('input', (e) => {
+  const el = e.target, s = el.selectionStart, en = el.selectionEnd;
+  el.value = el.value.toUpperCase().replace(/\s+/g, '');
+  try { el.setSelectionRange(s, en); } catch (x) {}
+  const holder = findAdmissionHolder(normAdm(el.value), document.getElementById('f_recordId').value || null);
+  const hint = document.getElementById('admHint');
+  if (holder){ hint.textContent = 'Already used by ' + describeStudent(holder) + '. Choose a different number.'; hint.style.color = '#8B1E3F'; }
+  else { hint.textContent = 'This number belongs to this student only. It stays the same after promotion and is never given to anyone else.'; hint.style.color = ''; }
+});
+document.getElementById('suggestAdmBtn').addEventListener('click', () => {
+  document.getElementById('f_admissionNo').value = suggestNextAdmissionNo();
+  document.getElementById('f_admissionNo').dispatchEvent(new Event('input'));
+});
+// A change the server refused (for example a number someone else just took, while this device was offline).
+window.addEventListener('sms-sync-rejected', async (e) => {
+  alert('A student change was not saved:\n\n' + (e.detail && e.detail.error));
+  allRecords = await window.smsSync.getRecords(RECORD_TYPE); renderTable();
+});
+
+function populateSchoolSelects(){
+  const schools = settingsPayload.schools || [];
+  if (!schools.length) return; // single-school org — leave the school UI hidden
+  document.getElementById('f_schoolWrap').style.display = 'block';
+  document.getElementById('f_schoolId').innerHTML = schools.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  const filterSchool = document.getElementById('filterSchool');
+  filterSchool.style.display = 'inline-block';
+  filterSchool.innerHTML = '<option value="">All Schools/Branches</option>' + schools.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+}
+
+function matchesFilters(rec){
+  const cls = document.getElementById('filterClass').value;
+  const sch = document.getElementById('filterSchool').value;
+  const q = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const p = rec.payload;
+  if (cls && p.class !== cls) return false;
+  if (sch && p.schoolId !== sch) return false;
+  if (q && !(`${p.fullName} ${p.admissionNo}`.toLowerCase().includes(q))) return false;
+  return true;
+}
+
+function renderTable(){
+  renderDuplicateBanner();
+  const rows = allRecords.filter(matchesFilters).sort((a,b)=>(a.payload.fullName||'').localeCompare(b.payload.fullName||''));
+  document.querySelector('#dataTable tbody').innerHTML = rows.map(r => {
+    const p = r.payload;
+    return `<tr>
+      <td>${p.photo ? `<img class="thumb" src="${p.photo}">` : `<span class="thumb d-inline-block"></span>`}</td>
+      <td>${escapeHtml(p.fullName||'')}</td>
+      <td>${escapeHtml(p.admissionNo||'')}</td>
+      <td>${escapeHtml(p.class||'')}${p.arm ? ' '+escapeHtml(p.arm) : ''}</td>
+      <td>${escapeHtml(p.guardianPhone||'—')}</td>
+      <td>${p.active===false ? '—' : '✅'}</td>
+      <td class="text-end">
+        ${canWrite ? `<button class="btn btn-sm btn-outline-secondary edit-btn" data-id="${r.recordId}">Edit</button>
+        <button class="btn btn-sm btn-outline-danger del-btn" data-id="${r.recordId}">Delete</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" class="text-center text-muted py-3">No students found.</td></tr>`;
+
+  document.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click', ()=>openEdit(b.dataset.id)));
+  document.querySelectorAll('.del-btn').forEach(b=>b.addEventListener('click', async ()=>{
+    if (!confirm('Delete this student record?')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    allRecords = allRecords.filter(r=>r.recordId!==b.dataset.id);
+    renderTable();
+  }));
+}
+document.getElementById('filterClass').addEventListener('change', renderTable);
+document.getElementById('filterSchool').addEventListener('change', renderTable);
+document.getElementById('filterSearch').addEventListener('input', renderTable);
+
+function resetForm(){
+  ['f_recordId','f_fullName','f_admissionNo','f_guardianPhone','f_guardianEmail','f_address','f_dob'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_class').value=''; populateArmSelect('','');
+  document.getElementById('f_gender').value='';
+  document.getElementById('f_active').checked = true;
+  document.getElementById('photoPreview').style.display='none';
+  document.getElementById('f_photoInput').value='';
+  if ((settingsPayload.schools||[]).length) document.getElementById('f_schoolId').value = settingsPayload.activeSchoolId || '';
+}
+document.getElementById('newBtn').addEventListener('click', ()=>{
+  document.getElementById('modalTitle').textContent = 'New Student';
+  resetForm();
+});
+function openEdit(recordId){
+  const rec = allRecords.find(r=>r.recordId===recordId);
+  if (!rec) return;
+  const p = rec.payload;
+  document.getElementById('modalTitle').textContent = 'Edit Student';
+  document.getElementById('f_recordId').value = recordId;
+  document.getElementById('f_fullName').value = p.fullName||'';
+  document.getElementById('f_admissionNo').value = p.admissionNo||'';
+  document.getElementById('f_class').value = p.class||'';
+  populateArmSelect(p.class||'', p.arm||'');
+  if ((settingsPayload.schools||[]).length) document.getElementById('f_schoolId').value = p.schoolId || '';
+  document.getElementById('f_gender').value = p.gender||'';
+  document.getElementById('f_dob').value = p.dob||'';
+  document.getElementById('f_guardianPhone').value = p.guardianPhone||'';
+  document.getElementById('f_guardianEmail').value = p.guardianEmail||'';
+  document.getElementById('f_address').value = p.address||'';
+  document.getElementById('f_active').checked = p.active !== false;
+  const preview = document.getElementById('photoPreview');
+  if (p.photo){ preview.src = p.photo; preview.style.display='block'; } else { preview.style.display='none'; }
+  new bootstrap.Modal(document.getElementById('recordModal')).show();
+}
+document.getElementById('f_photoInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0]; if (!file) return;
+  const dataUrl = await resizeImageToDataUrl(file, 200, 200);
+  const preview = document.getElementById('photoPreview');
+  preview.src = dataUrl; preview.style.display='block';
+  preview.dataset.newPhoto = dataUrl;
+});
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const recordId = document.getElementById('f_recordId').value || null;
+  const fullName = document.getElementById('f_fullName').value.trim();
+  const admissionNo = normAdm(document.getElementById('f_admissionNo').value);
+  if (!fullName || !admissionNo){ alert('Full name and admission number are required.'); return; }
+  const holder = findAdmissionHolder(admissionNo, recordId);
+  if (holder){ alert('Admission number ' + admissionNo + ' already belongs to ' + describeStudent(holder) + '.\n\nEvery student must have their own admission number, and it never changes, even after promotion.\nTap "Next free no." for a number that is available.'); return; }
+  const existing = recordId ? allRecords.find(r=>r.recordId===recordId) : null;
+  const preview = document.getElementById('photoPreview');
+  const payload = {
+    fullName, admissionNo,
+    class: document.getElementById('f_class').value,
+    arm: document.getElementById('f_arm').value,
+    schoolId: (settingsPayload.schools||[]).length ? document.getElementById('f_schoolId').value : '',
+    gender: document.getElementById('f_gender').value,
+    dob: document.getElementById('f_dob').value,
+    guardianPhone: document.getElementById('f_guardianPhone').value.trim(),
+    guardianEmail: document.getElementById('f_guardianEmail').value.trim(),
+    address: document.getElementById('f_address').value.trim(),
+    active: document.getElementById('f_active').checked,
+    photo: preview.dataset.newPhoto || (existing ? existing.payload.photo : '') || ''
+  };
+  const newId = await window.smsSync.saveRecord(RECORD_TYPE, payload, recordId);
+  bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+  if (recordId){
+    const idx = allRecords.findIndex(r=>r.recordId===recordId);
+    if (idx>-1) allRecords[idx] = { ...allRecords[idx], payload };
+  } else {
+    allRecords.push({ recordId: newId, type: RECORD_TYPE, payload });
+  }
+  renderTable();
+});
+
+/* ====== CSV Export/Import ====== */
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  if (!allRecords.length){ alert('No students to export.'); return; }
+  const cols = ['fullName','admissionNo','class','arm','gender','dob','guardianPhone','guardianEmail','address'];
+  const lines = [cols.join(',')];
+  allRecords.forEach(r => lines.push(cols.map(c=>csvEscape(r.payload[c])).join(',')));
+  downloadCsv(lines.join('\n'), `students-export-${Date.now()}.csv`);
+});
+document.getElementById('downloadTemplateLink').addEventListener('click', (e)=>{
+  e.preventDefault();
+  downloadCsv('fullName,admissionNo,class,arm,gender,dob,guardianPhone,guardianEmail,address\nJohn Doe,STU-0001,JSS1,A,Male,2012-05-14,08012345678,parent@example.com,12 Main St',
+    'students-import-template.csv');
+});
+document.getElementById('importGoBtn').addEventListener('click', async ()=>{
+  const file = document.getElementById('csvFileInput').files[0];
+  const resultBox = document.getElementById('importResult');
+  if (!file){ alert('Choose a CSV file first.'); return; }
+  const rows = parseCsv(await file.text());
+  if (rows.length < 2){ alert('CSV has no data rows.'); return; }
+  const header = rows[0].map(h=>h.trim());
+  if (!header.includes('fullName') || !header.includes('admissionNo')){ alert('CSV must include fullName and admissionNo columns.'); return; }
+
+  const existingAdmNos = new Set(allRecords.map(r=>normAdm(r.payload.admissionNo)));
+  let created = 0, skipped = [];
+  document.getElementById('importGoBtn').disabled = true;
+  for (const r of rows.slice(1)){
+    const obj = {}; header.forEach((h,i)=> obj[h]=(r[i]||'').trim());
+    if (!obj.fullName || !obj.admissionNo){ skipped.push(`(row) — missing required field`); continue; }
+    obj.admissionNo = normAdm(obj.admissionNo);
+    if (existingAdmNos.has(obj.admissionNo)){ skipped.push(`${obj.admissionNo} — already belongs to another student (or is repeated in this file)`); continue; }
+    const payload = {
+      fullName: obj.fullName, admissionNo: obj.admissionNo, class: obj.class||'', arm: obj.arm||'',
+      gender: obj.gender||'', dob: obj.dob||'', guardianPhone: obj.guardianPhone||'',
+      guardianEmail: obj.guardianEmail||'', address: obj.address||'', active: true, photo: ''
+    };
+    const newId = await window.smsSync.saveRecord(RECORD_TYPE, payload, null);
+    allRecords.push({ recordId: newId, type: RECORD_TYPE, payload });
+    existingAdmNos.add(obj.admissionNo);
+    created++;
+  }
+  document.getElementById('importGoBtn').disabled = false;
+  resultBox.style.display = 'block';
+  resultBox.textContent = `Created: ${created}\nSkipped: ${skipped.length}\n${skipped.join('\n')}`;
+  renderTable();
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+<script src="img-lib.js"></script>
+</body>
+</html>

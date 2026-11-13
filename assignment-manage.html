@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Assignments</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  table{font-size:.82rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+  .no-perm-note{font-size:.82rem;color:#8A6A12;background:#FCF3DA;border-radius:10px;padding:.6rem .8rem;margin-bottom:1rem;}
+  .overdue{color:#8B1E3F;font-weight:700;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — changes are saved locally and will sync once you're back online.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>Assignments</h1>
+      <div class="sync-status" id="syncStatusText"><span class="dot offline"></span>Checking…</div>
+    </div>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+      <button class="btn btn-sm btn-forest" id="newBtn">+ New Assignment</button>
+    </div>
+  </div>
+
+  <div id="noPermNote" class="no-perm-note" style="display:none;"></div>
+  <div id="noAssignmentsNote" class="no-perm-note" style="display:none;">You don't have any subjects assigned to you yet. Ask your school admin to assign you a class and subject in <em>Class &amp; Subject Assignment</em> before posting an assignment.</div>
+
+  <!-- Assignment builder -->
+  <div class="card-panel" id="builderCard" style="display:none;">
+    <h2 style="font-size:1rem;font-weight:700;color:#14213D;" id="builderTitle">New Assignment</h2>
+    <input type="hidden" id="a_recordId">
+    <div class="row g-2 mb-2">
+      <div class="col-md-6">
+        <label class="form-label small">Class / Arm / Subject</label>
+        <select class="form-select form-select-sm" id="a_assignment"></select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Title</label>
+        <input class="form-control form-control-sm" id="a_title" placeholder="e.g. Chapter 4 Exercises">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Due Date</label>
+        <input type="date" class="form-control form-control-sm" id="a_dueDate">
+      </div>
+    </div>
+    <div class="mb-2">
+      <label class="form-label small">Instructions</label>
+      <textarea class="form-control form-control-sm" id="a_instructions" rows="3" placeholder="What should the student do?"></textarea>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Attachment (optional — e.g. a photo of the worksheet)</label>
+      <input type="file" accept="image/*" class="form-control form-control-sm" id="a_attachmentInput">
+      <img id="a_attachmentPreview" style="max-width:200px;margin-top:.5rem;display:none;border-radius:8px;border:1px solid #DCD0B4;">
+    </div>
+    <button class="btn btn-forest" id="saveBtn">Save Assignment</button>
+    <button class="btn btn-outline-secondary" id="cancelBuilderBtn">Cancel</button>
+    <div id="builderMsg" class="small mt-2"></div>
+  </div>
+
+  <!-- List -->
+  <div class="card-panel" id="listCard">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Class/Arm/Subject</th><th>Title</th><th>Due</th><th>Submissions</th><th></th></tr></thead>
+        <tbody id="assignmentTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Submissions panel -->
+  <div class="card-panel" id="subsCard" style="display:none;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h2 style="font-size:1rem;font-weight:700;color:#14213D;margin:0;" id="subsTitle">Submissions</h2>
+      <button class="btn btn-sm btn-outline-secondary" id="backToListBtn">← Back to Assignments</button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Student</th><th>Response</th><th>Submitted</th></tr></thead>
+        <tbody id="subsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const ADMIN_TIER = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const READ_ROLES = [...ADMIN_TIER, 'Teacher'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => READ_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+const isAdminTier = roles.some(r => ADMIN_TIER.includes(r));
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+function renderSyncStatus(detail){
+  const el = document.getElementById('syncStatusText');
+  const dotClass = detail.syncing ? 'syncing' : (detail.online ? 'online' : 'offline');
+  const label = detail.syncing ? 'Syncing…' : (detail.online ? 'Online' : 'Offline');
+  const pendingTxt = detail.pending ? ` — ${detail.pending} pending` : '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span>${label}${pendingTxt}`;
+}
+window.smsSync.onStatus(renderSyncStatus);
+
+function escapeHtml(str){ return String(str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+let settingsState = null;
+let myAssignmentSlots = []; // {class, arm, subject, schoolId}
+let assignments = [];
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsState = payload;
+  const schools = settingsState.schools || [];
+
+  if (isAdminTier) {
+    myAssignmentSlots = [];
+    const schoolList = schools.length ? schools.map(s => s.id) : [''];
+    schoolList.forEach(schoolId => {
+      (settingsState.classes||[]).forEach(cls => {
+        const arms = (settingsState.classArms||{})[cls] || [''];
+        arms.forEach(arm => window.smsSettings.subjectsForClass(settingsState, cls).forEach(subject => {
+          myAssignmentSlots.push({ class: cls, arm, subject, schoolId });
+        }));
+      });
+    });
+  } else {
+    const subjectAssignments = await window.smsSync.getRecords('subjectAssignment');
+    myAssignmentSlots = subjectAssignments.filter(r => r.payload.teacherUserId === session.userId).map(r => r.payload);
+  }
+
+  if (!myAssignmentSlots.length && !isAdminTier) {
+    document.getElementById('noAssignmentsNote').style.display = 'block';
+    document.getElementById('newBtn').disabled = true;
+  }
+
+  assignments = await window.smsSync.getRecords('assignment');
+  if (!isAdminTier) assignments = assignments.filter(r => r.payload.teacherUserId === session.userId);
+  renderTable();
+}
+
+function schoolNameFor(id){
+  if (!id) return '';
+  const s = (settingsState.schools || []).find(x => x.id === id);
+  return s ? s.name + ' — ' : '';
+}
+function fillSlotSelect(selectedIdx){
+  const sel = document.getElementById('a_assignment');
+  sel.innerHTML = myAssignmentSlots.map((a,i) => `<option value="${i}">${schoolNameFor(a.schoolId)}${a.class}${a.arm?' '+a.arm:''} — ${a.subject}</option>`).join('');
+  if (selectedIdx !== undefined) sel.value = selectedIdx;
+}
+
+function renderTable(){
+  const body = document.getElementById('assignmentTableBody');
+  const today = new Date().toISOString().slice(0,10);
+  body.innerHTML = assignments.map(r => {
+    const p = r.payload;
+    const overdue = p.dueDate && p.dueDate < today;
+    return `<tr>
+      <td>${p.class}${p.arm?' '+p.arm:''} — ${p.subject}</td>
+      <td>${escapeHtml(p.title)}</td>
+      <td class="${overdue?'overdue':''}">${p.dueDate || '—'}</td>
+      <td><button class="btn btn-sm btn-outline-secondary subs-btn" data-id="${r.recordId}">View</button></td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-secondary edit-btn" data-id="${r.recordId}">Edit</button>
+        <button class="btn btn-sm btn-outline-danger del-btn" data-id="${r.recordId}">Delete</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">No assignments posted yet.</td></tr>';
+
+  body.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', () => openBuilder(b.dataset.id)));
+  body.querySelectorAll('.subs-btn').forEach(b => b.addEventListener('click', () => openSubmissions(b.dataset.id)));
+  body.querySelectorAll('.del-btn').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this assignment? Student submissions tied to it will remain but it will disappear from the public page.')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    assignments = assignments.filter(r => r.recordId !== b.dataset.id);
+    renderTable();
+  }));
+}
+
+document.getElementById('newBtn').addEventListener('click', () => openBuilder(null));
+document.getElementById('cancelBuilderBtn').addEventListener('click', () => {
+  document.getElementById('builderCard').style.display = 'none';
+  document.getElementById('listCard').style.display = 'block';
+});
+
+let currentAttachmentDataUrl = '';
+document.getElementById('a_attachmentInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  currentAttachmentDataUrl = await resizeImageToDataUrl(file, 700, 900);
+  const preview = document.getElementById('a_attachmentPreview');
+  preview.src = currentAttachmentDataUrl; preview.style.display = 'block';
+});
+
+function openBuilder(recordId){
+  document.getElementById('builderMsg').textContent = '';
+  document.getElementById('a_recordId').value = recordId || '';
+  document.getElementById('a_attachmentPreview').style.display = 'none';
+  document.getElementById('a_attachmentInput').value = '';
+  currentAttachmentDataUrl = '';
+
+  if (recordId) {
+    const rec = assignments.find(r => r.recordId === recordId);
+    const p = rec.payload;
+    document.getElementById('builderTitle').textContent = 'Edit Assignment';
+    const idx = myAssignmentSlots.findIndex(a => a.class===p.class && (a.arm||'')===(p.arm||'') && a.subject===p.subject && (a.schoolId||'')===(p.schoolId||''));
+    fillSlotSelect(idx >= 0 ? idx : 0);
+    document.getElementById('a_title').value = p.title || '';
+    document.getElementById('a_dueDate').value = p.dueDate || '';
+    document.getElementById('a_instructions').value = p.instructions || '';
+    if (p.attachmentUrl) { currentAttachmentDataUrl = p.attachmentUrl; document.getElementById('a_attachmentPreview').src = p.attachmentUrl; document.getElementById('a_attachmentPreview').style.display = 'block'; }
+  } else {
+    document.getElementById('builderTitle').textContent = 'New Assignment';
+    fillSlotSelect(0);
+    document.getElementById('a_title').value = '';
+    document.getElementById('a_dueDate').value = '';
+    document.getElementById('a_instructions').value = '';
+  }
+  document.getElementById('builderCard').style.display = 'block';
+  document.getElementById('listCard').style.display = 'none';
+  document.getElementById('builderCard').scrollIntoView({ behavior:'smooth' });
+}
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('builderMsg');
+  const slot = myAssignmentSlots[Number(document.getElementById('a_assignment').value)];
+  const title = document.getElementById('a_title').value.trim();
+  const dueDate = document.getElementById('a_dueDate').value;
+  const instructions = document.getElementById('a_instructions').value.trim();
+
+  if (!slot){ msg.textContent = 'Select a class/subject.'; msg.className='small mt-2 text-danger'; return; }
+  if (!title){ msg.textContent = 'Enter a title.'; msg.className='small mt-2 text-danger'; return; }
+
+  const payload = {
+    class: slot.class, arm: slot.arm || '', subject: slot.subject, schoolId: slot.schoolId || '',
+    title, instructions, dueDate, attachmentUrl: currentAttachmentDataUrl, teacherUserId: session.userId
+  };
+  const recordId = document.getElementById('a_recordId').value || null;
+  const newId = await window.smsSync.saveRecord('assignment', payload, recordId);
+  const existing = assignments.find(r => r.recordId === recordId);
+  if (existing) existing.payload = payload;
+  else assignments.push({ recordId: newId, type:'assignment', payload });
+
+  msg.textContent = navigator.onLine ? 'Saved.' : "Saved locally — will sync when you're back online.";
+  msg.className = 'small mt-2 text-success';
+  renderTable();
+  setTimeout(() => {
+    document.getElementById('builderCard').style.display = 'none';
+    document.getElementById('listCard').style.display = 'block';
+  }, 700);
+});
+
+/* ============================== SUBMISSIONS ============================== */
+async function openSubmissions(assignmentId){
+  const a = assignments.find(r => r.recordId === assignmentId);
+  document.getElementById('subsTitle').textContent = `Submissions — ${a.payload.title}`;
+  document.getElementById('listCard').style.display = 'none';
+  document.getElementById('subsCard').style.display = 'block';
+  document.getElementById('subsTableBody').innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Loading…</td></tr>';
+
+  const allSubs = await window.smsSync.getRecords('assignmentSubmission');
+  const subs = allSubs.filter(r => r.payload.assignmentId === assignmentId);
+
+  document.getElementById('subsTableBody').innerHTML = subs.map(r => {
+    const p = r.payload;
+    return `<tr>
+      <td>${escapeHtml(p.studentName)}</td>
+      <td class="small">${escapeHtml(p.responseText) || '<span class="text-muted">(no written response)</span>'}</td>
+      <td class="small">${new Date(p.submittedAt).toLocaleString([], {dateStyle:'short',timeStyle:'short'})}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">No submissions yet.</td></tr>';
+}
+document.getElementById('backToListBtn').addEventListener('click', () => {
+  document.getElementById('subsCard').style.display = 'none';
+  document.getElementById('listCard').style.display = 'block';
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+<script src="img-lib.js"></script>
+</body>
+</html>

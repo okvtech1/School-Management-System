@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Student Portal — OKV School Management System</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#14213D;min-height:100vh;font-family:system-ui,sans-serif;padding:1rem;}
+  .wrap{max-width:520px;margin:0 auto;}
+  h1{font-size:1.25rem;font-weight:800;color:#fff;text-align:center;margin-bottom:1.25rem;}
+  .option-card{
+    display:flex;align-items:center;gap:1rem;background:#fff;border-radius:14px;padding:1.1rem 1.25rem;
+    margin-bottom:1rem;text-decoration:none;box-shadow:0 12px 30px rgba(0,0,0,.25);
+  }
+  .option-card .icon{width:50px;height:50px;border-radius:12px;background:#14213D;color:#B8863B;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex:none;}
+  .option-card .txt strong{display:block;color:#14213D;font-size:1rem;}
+  .option-card .txt span{color:#7a7259;font-size:.8rem;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="publicWrap">
+  <h1>What would you like to do?</h1>
+
+  <a class="option-card" id="resultLink" href="#">
+    <div class="icon"><i class="bi bi-file-earmark-text"></i></div>
+    <div class="txt"><strong>Check My Result</strong><span>1st/2nd/3rd CA, term result, or yearly cumulative — view or download as PDF</span></div>
+  </a>
+
+  <a class="option-card" id="assignmentLink" href="#">
+    <div class="icon"><i class="bi bi-journal-text"></i></div>
+    <div class="txt"><strong>Do an Assignment</strong><span>Enter with your admission number and full name to see what's available</span></div>
+  </a>
+
+  <a class="option-card" id="cbtLink" href="#">
+    <div class="icon"><i class="bi bi-laptop"></i></div>
+    <div class="txt"><strong>Take a CBT Test/Exam</strong><span>Enter with your admission number and full name to begin</span></div>
+  </a>
+
+  <a class="option-card" id="payLink" href="#">
+    <div class="icon"><i class="bi bi-credit-card"></i></div>
+    <div class="txt"><strong>Pay Fees</strong><span>Submit a payment with your receipt and get a reference number</span></div>
+  </a>
+
+  <div id="noOrgNote" class="text-center small text-white-50" style="display:none;">This link is missing school information. Please use the exact link your school shared.</div>
+</div>
+
+<script>
+/* Entry guard: send first-time visitors through the install screen first, then
+   return here. No-op once installed (standalone) or already routed through once. */
+(function(){
+  const isStandaloneNow = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  // A "direct" link (?direct=1) skips the install screen for visitors who only want to use the portal in their browser.
+  if (new URLSearchParams(window.location.search).get('direct') === '1') sessionStorage.setItem('sms_came_from_install', '1');
+  if (!isStandaloneNow && !sessionStorage.getItem('sms_came_from_install')) {
+    window.location.replace('install.html?returnTo=' + encodeURIComponent(window.location.href));
+  }
+})();
+
+const params = new URLSearchParams(window.location.search);
+const orgId = params.get('org');
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+if (!orgId) {
+  document.getElementById('noOrgNote').style.display = 'block';
+} else {
+  const qs = `?org=${encodeURIComponent(orgId)}`;
+  document.getElementById('resultLink').href = `result-check.html${qs}`;
+  document.getElementById('assignmentLink').href = `assignment-check.html${qs}`;
+  document.getElementById('cbtLink').href = `cbt-exam.html${qs}`;
+  document.getElementById('payLink').href = `pay-fees.html${qs}`;
+}
+</script>
+<script src="portal-nav.js"></script>
+<script>renderPortalNav('portal');</script>
+</body>
+</html>

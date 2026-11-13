@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Staff</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);}
+  table{font-size:.85rem;}
+  th{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .thumb{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#F1E7D3;}
+  .filters{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;}
+  .import-instructions{background:#FCF3DA;border:1px solid #E8D27A;border-radius:10px;padding:.9rem 1rem;font-size:.82rem;color:#5b5442;margin-bottom:1rem;}
+  .import-instructions code{background:#fff;border:1px solid #E8D27A;border-radius:4px;padding:.05rem .35rem;}
+  .import-instructions table{font-size:.78rem;margin-top:.5rem;}
+  .import-result{font-size:.82rem;white-space:pre-wrap;max-height:180px;overflow:auto;background:#FAF6EC;border-radius:8px;padding:.6rem;margin-top:.7rem;}
+  .photo-preview{width:80px;height:80px;border-radius:10px;object-fit:cover;background:#F1E7D3;display:block;margin-bottom:.5rem;}
+  .sync-status{font-size:.78rem;color:#7a7259;}
+  .sync-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle;}
+  .dot.online{background:#2F6B4F;} .dot.offline{background:#8B1E3F;} .dot.syncing{background:#B8863B;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — changes are saved locally and will sync once you're back online.</div>
+
+<div class="wrap">
+  <div class="topline">
+    <div>
+      <h1>Staff</h1>
+      <div class="sync-status" id="syncStatusText"><span class="dot offline"></span>Checking…</div>
+    </div>
+    <div>
+      <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <button class="btn btn-sm btn-outline-secondary" id="exportCsvBtn"><i class="bi bi-download"></i> Export CSV</button>
+      <button class="btn btn-sm btn-outline-secondary" id="importOpenBtn" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-upload"></i> Import CSV</button>
+      <button class="btn btn-sm btn-forest" id="newBtn" data-bs-toggle="modal" data-bs-target="#recordModal">+ New Staff</button>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="filters">
+      <select class="form-select form-select-sm" id="filterSchool" style="max-width:180px;display:none;"></select>
+      <input type="text" class="form-control form-control-sm" id="filterSearch" placeholder="Search name or staff ID" style="max-width:260px;">
+    </div>
+    <div class="table-responsive">
+      <table class="table" id="dataTable">
+        <thead><tr><th></th><th>Name</th><th>Staff ID</th><th>Position</th><th>Phone</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit modal -->
+<div class="modal fade" id="recordModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="modalTitle">New Staff</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="f_recordId">
+        <img class="photo-preview" id="photoPreview" style="display:none;">
+        <div class="mb-2"><label class="form-label small">Photo</label><input type="file" accept="image/*" class="form-control form-control-sm" id="f_photoInput"></div>
+        <div class="mb-2"><label class="form-label small">Full Name</label><input class="form-control form-control-sm" id="f_fullName" required></div>
+        <div class="mb-2"><label class="form-label small">Staff ID</label><input class="form-control form-control-sm" id="f_staffId" required></div>
+        <div class="mb-2" id="f_schoolWrap" style="display:none;">
+          <label class="form-label small">School / Branch</label>
+          <select class="form-select form-select-sm" id="f_schoolId"></select>
+        </div>
+        <div class="mb-2"><label class="form-label small">Position / Department</label><input class="form-control form-control-sm" id="f_position" placeholder="e.g. Mathematics Teacher, Bursar, Admin Officer"></div>
+        <div class="mb-2"><label class="form-label small">Phone</label><input class="form-control form-control-sm" id="f_phone"></div>
+        <div class="mb-2"><label class="form-label small">Email</label><input type="email" class="form-control form-control-sm" id="f_email"></div>
+        <div class="mb-2"><label class="form-label small">Hire Date</label><input type="date" class="form-control form-control-sm" id="f_hireDate"></div>
+        <div class="mb-2">
+          <label class="form-label small">Linked Login Account (optional)</label>
+          <select class="form-select form-select-sm" id="f_linkedUserId"><option value="">— None —</option></select>
+          <div class="form-text">If this staff member has a login (e.g. a Teacher), link it here so their assignments and dashboard can find their record.</div>
+        </div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="f_active" checked><label class="form-check-label small" for="f_active">Active</label></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-forest" id="saveBtn">Save</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Import Staff from CSV</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="import-instructions">
+          <strong>Required format</strong> — first row must be a header row with these exact column names:
+          <table class="table table-sm table-bordered">
+            <thead><tr><th>Column</th><th>Required?</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>fullName</code></td><td>Yes</td><td></td></tr>
+              <tr><td><code>staffId</code></td><td>Yes</td><td>Should be unique</td></tr>
+              <tr><td><code>position</code></td><td>No</td><td>e.g. "Mathematics Teacher"</td></tr>
+              <tr><td><code>phone</code></td><td>No</td><td></td></tr>
+              <tr><td><code>email</code></td><td>No</td><td></td></tr>
+              <tr><td><code>hireDate</code></td><td>No</td><td>Format <code>YYYY-MM-DD</code></td></tr>
+            </tbody>
+          </table>
+          Photos can't be imported via CSV — add them individually after import.
+          <div class="mt-2"><a href="#" id="downloadTemplateLink">Download a blank CSV template</a></div>
+        </div>
+        <input type="file" class="form-control" id="csvFileInput" accept=".csv">
+        <div class="import-result" id="importResult" style="display:none;"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-forest" id="importGoBtn">Import</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sync.js"></script>
+<script src="csv-lib.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const RECORD_TYPE = 'staff';
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+const READ_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer','Bursar / Accountant'];
+const WRITE_ROLES = ['Super Administrator','School Administrator','Principal / Head Teacher'];
+const roles = (session && session.roles) || [];
+if (!session || !roles.some(r => READ_ROLES.includes(r))){ window.top.location.href = 'dashboard.html'; }
+const canWrite = roles.some(r => WRITE_ROLES.includes(r));
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+function renderSyncStatus(detail){
+  const el = document.getElementById('syncStatusText');
+  const dotClass = detail.syncing ? 'syncing' : (detail.online ? 'online' : 'offline');
+  const label = detail.syncing ? 'Syncing…' : (detail.online ? 'Online' : 'Offline');
+  const pendingTxt = detail.pending ? ` — ${detail.pending} pending` : '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span>${label}${pendingTxt}`;
+}
+window.smsSync.onStatus(renderSyncStatus);
+
+if (!canWrite){ ['newBtn','importOpenBtn'].forEach(id => document.getElementById(id).style.display = 'none'); }
+
+let allRecords = [];
+let settingsPayload = {};
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsPayload = payload;
+  populateSchoolSelects();
+  allRecords = await window.smsSync.getRecords(RECORD_TYPE);
+  renderTable();
+}
+function populateSchoolSelects(){
+  const schools = settingsPayload.schools || [];
+  if (!schools.length) return;
+  document.getElementById('f_schoolWrap').style.display = 'block';
+  document.getElementById('f_schoolId').innerHTML = schools.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  const filterSchool = document.getElementById('filterSchool');
+  filterSchool.style.display = 'inline-block';
+  filterSchool.innerHTML = '<option value="">All Schools/Branches</option>' + schools.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+}
+function matchesFilters(rec){
+  const q = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const sch = document.getElementById('filterSchool').value;
+  const p = rec.payload;
+  if (sch && p.schoolId !== sch) return false;
+  if (q && !(`${p.fullName} ${p.staffId}`.toLowerCase().includes(q))) return false;
+  return true;
+}
+function renderTable(){
+  const rows = allRecords.filter(matchesFilters).sort((a,b)=>(a.payload.fullName||'').localeCompare(b.payload.fullName||''));
+  document.querySelector('#dataTable tbody').innerHTML = rows.map(r => {
+    const p = r.payload;
+    return `<tr>
+      <td>${p.photo ? `<img class="thumb" src="${p.photo}">` : `<span class="thumb d-inline-block"></span>`}</td>
+      <td>${escapeHtml(p.fullName||'')}</td>
+      <td>${escapeHtml(p.staffId||'')}</td>
+      <td>${escapeHtml(p.position||'—')}</td>
+      <td>${escapeHtml(p.phone||'—')}</td>
+      <td>${p.active===false ? '—' : '✅'}</td>
+      <td class="text-end">
+        ${canWrite ? `<button class="btn btn-sm btn-outline-secondary edit-btn" data-id="${r.recordId}">Edit</button>
+        <button class="btn btn-sm btn-outline-danger del-btn" data-id="${r.recordId}">Delete</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" class="text-center text-muted py-3">No staff found.</td></tr>`;
+
+  document.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click', ()=>openEdit(b.dataset.id)));
+  document.querySelectorAll('.del-btn').forEach(b=>b.addEventListener('click', async ()=>{
+    if (!confirm('Delete this staff record?')) return;
+    await window.smsSync.deleteRecord(b.dataset.id);
+    allRecords = allRecords.filter(r=>r.recordId!==b.dataset.id);
+    renderTable();
+  }));
+}
+document.getElementById('filterSearch').addEventListener('input', renderTable);
+document.getElementById('filterSchool').addEventListener('change', renderTable);
+
+function resetForm(){
+  ['f_recordId','f_fullName','f_staffId','f_position','f_phone','f_email','f_hireDate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f_active').checked = true;
+  document.getElementById('photoPreview').style.display='none';
+  document.getElementById('f_photoInput').value='';
+  if ((settingsPayload.schools||[]).length) document.getElementById('f_schoolId').value = settingsPayload.activeSchoolId || '';
+}
+document.getElementById('newBtn').addEventListener('click', ()=>{
+  document.getElementById('modalTitle').textContent = 'New Staff';
+  resetForm();
+});
+function openEdit(recordId){
+  const rec = allRecords.find(r=>r.recordId===recordId);
+  if (!rec) return;
+  const p = rec.payload;
+  document.getElementById('modalTitle').textContent = 'Edit Staff';
+  document.getElementById('f_recordId').value = recordId;
+  document.getElementById('f_fullName').value = p.fullName||'';
+  document.getElementById('f_staffId').value = p.staffId||'';
+  if ((settingsPayload.schools||[]).length) document.getElementById('f_schoolId').value = p.schoolId || '';
+  document.getElementById('f_position').value = p.position||'';
+  document.getElementById('f_phone').value = p.phone||'';
+  document.getElementById('f_email').value = p.email||'';
+  document.getElementById('f_hireDate').value = p.hireDate||'';
+  document.getElementById('f_active').checked = p.active !== false;
+  const preview = document.getElementById('photoPreview');
+  if (p.photo){ preview.src = p.photo; preview.style.display='block'; } else { preview.style.display='none'; }
+  new bootstrap.Modal(document.getElementById('recordModal')).show();
+}
+document.getElementById('f_photoInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0]; if (!file) return;
+  const dataUrl = await resizeImageToDataUrl(file, 200, 200);
+  const preview = document.getElementById('photoPreview');
+  preview.src = dataUrl; preview.style.display='block';
+  preview.dataset.newPhoto = dataUrl;
+});
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const recordId = document.getElementById('f_recordId').value || null;
+  const fullName = document.getElementById('f_fullName').value.trim();
+  const staffId = document.getElementById('f_staffId').value.trim();
+  if (!fullName || !staffId){ alert('Full name and staff ID are required.'); return; }
+  const existing = recordId ? allRecords.find(r=>r.recordId===recordId) : null;
+  const preview = document.getElementById('photoPreview');
+  const payload = {
+    fullName, staffId,
+    schoolId: (settingsPayload.schools||[]).length ? document.getElementById('f_schoolId').value : '',
+    position: document.getElementById('f_position').value.trim(),
+    phone: document.getElementById('f_phone').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    hireDate: document.getElementById('f_hireDate').value,
+    active: document.getElementById('f_active').checked,
+    photo: preview.dataset.newPhoto || (existing ? existing.payload.photo : '') || ''
+  };
+  const newId = await window.smsSync.saveRecord(RECORD_TYPE, payload, recordId);
+  bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+  if (recordId){
+    const idx = allRecords.findIndex(r=>r.recordId===recordId);
+    if (idx>-1) allRecords[idx] = { ...allRecords[idx], payload };
+  } else {
+    allRecords.push({ recordId: newId, type: RECORD_TYPE, payload });
+  }
+  renderTable();
+});
+
+/* ====== CSV Export/Import ====== */
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  if (!allRecords.length){ alert('No staff to export.'); return; }
+  const cols = ['fullName','staffId','position','phone','email','hireDate'];
+  const lines = [cols.join(',')];
+  allRecords.forEach(r => lines.push(cols.map(c=>csvEscape(r.payload[c])).join(',')));
+  downloadCsv(lines.join('\n'), `staff-export-${Date.now()}.csv`);
+});
+document.getElementById('downloadTemplateLink').addEventListener('click', (e)=>{
+  e.preventDefault();
+  downloadCsv('fullName,staffId,position,phone,email,hireDate\nJane Smith,STAFF-0001,Mathematics Teacher,08012345678,jane@example.com,2022-09-01',
+    'staff-import-template.csv');
+});
+document.getElementById('importGoBtn').addEventListener('click', async ()=>{
+  const file = document.getElementById('csvFileInput').files[0];
+  const resultBox = document.getElementById('importResult');
+  if (!file){ alert('Choose a CSV file first.'); return; }
+  const rows = parseCsv(await file.text());
+  if (rows.length < 2){ alert('CSV has no data rows.'); return; }
+  const header = rows[0].map(h=>h.trim());
+  if (!header.includes('fullName') || !header.includes('staffId')){ alert('CSV must include fullName and staffId columns.'); return; }
+
+  const existingIds = new Set(allRecords.map(r=>String(r.payload.staffId||'').toLowerCase()));
+  let created = 0, skipped = [];
+  document.getElementById('importGoBtn').disabled = true;
+  for (const r of rows.slice(1)){
+    const obj = {}; header.forEach((h,i)=> obj[h]=(r[i]||'').trim());
+    if (!obj.fullName || !obj.staffId){ skipped.push(`(row) — missing required field`); continue; }
+    if (existingIds.has(obj.staffId.toLowerCase())){ skipped.push(`${obj.staffId} — already exists`); continue; }
+    const payload = {
+      fullName: obj.fullName, staffId: obj.staffId, position: obj.position||'',
+      phone: obj.phone||'', email: obj.email||'', hireDate: obj.hireDate||'', active: true, photo: ''
+    };
+    const newId = await window.smsSync.saveRecord(RECORD_TYPE, payload, null);
+    allRecords.push({ recordId: newId, type: RECORD_TYPE, payload });
+    existingIds.add(obj.staffId.toLowerCase());
+    created++;
+  }
+  document.getElementById('importGoBtn').disabled = false;
+  resultBox.style.display = 'block';
+  resultBox.textContent = `Created: ${created}\nSkipped: ${skipped.length}\n${skipped.join('\n')}`;
+  renderTable();
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+<script src="img-lib.js"></script>
+</body>
+</html>

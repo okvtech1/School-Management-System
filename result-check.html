@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Check Your Result — OKV School Management System</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#14213D;min-height:100vh;font-family:system-ui,sans-serif;padding:1rem;}
+  .wrap{max-width:700px;margin:0 auto;}
+  h1{font-size:1.25rem;font-weight:700;color:#fff;text-align:center;margin-bottom:1rem;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  .owing-box{background:#FADBDD;border-radius:10px;padding:1rem;text-align:center;color:#8B1E3F;}
+  .owing-box .amt{font-size:1.4rem;font-weight:800;}
+  .mode-tabs{display:flex;gap:.4rem;margin-bottom:1rem;}
+  .mode-tabs button{flex:1;border:1px solid #DCD0B4;background:#fff;color:#5b5442;font-weight:700;font-size:.82rem;padding:.5em;border-radius:10px;}
+  .mode-tabs button.active{background:#14213D;border-color:#14213D;color:#fff;}
+  #sheetWrap{display:none;}
+  #sheetContent .rs-outer{background:#e9e6dc;border-radius:6px;}
+  @media print{
+    @page{size:A4 portrait;margin:10mm;}
+    body{background:#fff !important;padding:0 !important;}
+    body *{visibility:hidden;}
+    #sheetContent, #sheetContent *{visibility:visible;}
+    #sheetWrap{max-width:none !important;}
+    #sheetContent{position:absolute;left:0;top:0;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><i class="bi bi-mortarboard"></i> Check Your Result</h1>
+
+  <div class="card-panel" id="formCard">
+    <div id="noOrgNote" class="small text-danger" style="display:none;">This link is missing school information. Please use the exact link your school shared.</div>
+
+    <form id="checkFormPasscode">
+      <div class="mb-3">
+        <label class="form-label small fw-bold">Session</label>
+        <select class="form-select" id="sessionPc" required></select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">Term</label>
+        <select class="form-select" id="termPc">
+          <option>First Term</option><option>Second Term</option><option>Third Term</option>
+          <option>Yearly Cumulative</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">Class</label>
+        <select class="form-select" id="classPc" required></select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">Passcode</label>
+        <input class="form-control form-control-lg" id="passcodeInput" maxlength="12" inputmode="numeric" autocomplete="off" placeholder="Type your passcode" required style="letter-spacing:.2em;font-weight:700;">
+        <div class="form-text">The passcode printed on the slip your school gave you. It belongs to you only.</div>
+      </div>
+      <button class="btn btn-forest w-100" id="checkBtnPasscode">Check Result</button>
+      <div id="checkMsgPasscode" class="small text-center mt-2"></div>
+    </form>
+  </div>
+
+  <div class="card-panel" id="owingCard" style="display:none;">
+    <div class="owing-box">
+      <div id="owingName" class="fw-bold mb-2"></div>
+      <div id="owingReason" class="mb-2"></div>
+      <div id="owingAmountBox" style="display:none;">
+        Outstanding balance: <span class="amt" id="owingAmount"></span>
+      </div>
+      <div class="small mt-3">Please contact the school office to complete clearance for this term.</div>
+    </div>
+    <button class="btn btn-outline-secondary w-100 mt-3" id="backBtn1">Check Another Result</button>
+  </div>
+</div>
+
+<div id="sheetWrap" class="wrap">
+  <div id="sheetContent"></div>
+  <div class="d-flex gap-2 mt-2">
+    <button class="btn btn-forest flex-fill" id="pdfBtn"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+    <button class="btn btn-outline-secondary" id="printBtn"><i class="bi bi-printer"></i> Print</button>
+    <button class="btn btn-outline-secondary" id="backBtn2">Check Another</button>
+  </div>
+  <div id="pdfMsg" class="small text-center mt-1"></div>
+</div>
+
+<script>
+/* Entry guard: send first-time visitors through the install screen first, then
+   return here. No-op once installed (standalone) or already routed through once. */
+(function(){
+  const isStandaloneNow = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  // A "direct" link (?direct=1) skips the install screen for visitors who only want to use the portal in their browser.
+  if (new URLSearchParams(window.location.search).get('direct') === '1') sessionStorage.setItem('sms_came_from_install', '1');
+  if (!isStandaloneNow && !sessionStorage.getItem('sms_came_from_install')) {
+    window.location.replace('install.html?returnTo=' + encodeURIComponent(window.location.href));
+  }
+})();
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+
+const params = new URLSearchParams(window.location.search);
+const orgId = params.get('org');
+if (!orgId) document.getElementById('noOrgNote').style.display = 'block';
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, orgId }) // no sessionToken — this is a public, unauthenticated action
+  });
+  return res.json();
+}
+
+/* Session, Term and Class dropdowns come from the school's own settings (public school info). */
+let classOptions = [];
+async function loadChoices(){
+  try {
+    const resp = await apiCall({ action:'publicGetOrgInfo' });
+    const classes = resp.classes || [], classArms = resp.classArms || {};
+    classOptions = [];
+    classes.forEach(c => {
+      const arms = classArms[c] || [];
+      if (arms.length) arms.forEach(a => classOptions.push({ cls: c, arm: a, label: c + ' ' + a }));
+      else classOptions.push({ cls: c, arm: '', label: c });
+    });
+    document.getElementById('classPc').innerHTML = classOptions.length
+      ? '<option value="">Select your class</option>' + classOptions.map((o, i) => `<option value="${i}">${escapeHtml(o.label)}</option>`).join('')
+      : '<option value="">No classes set up yet</option>';
+    const sessions = resp.sessions && resp.sessions.length ? resp.sessions : (resp.currentSession ? [resp.currentSession] : []);
+    document.getElementById('sessionPc').innerHTML = sessions.length
+      ? sessions.map(s => `<option>${escapeHtml(s)}</option>`).join('') : '<option value="">No session available yet</option>';
+    if (resp.currentSession) document.getElementById('sessionPc').value = resp.currentSession;
+    if (resp.currentTerm) document.getElementById('termPc').value = resp.currentTerm;
+  } catch (e) {
+    document.getElementById('classPc').innerHTML = '<option value="">Could not load. Check your connection.</option>';
+  }
+}
+function escapeHtml(str){ return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+loadChoices();
+
+/* ============================== SUBMIT: SESSION + TERM + CLASS + PASSCODE ============================== */
+document.getElementById('checkFormPasscode').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!orgId) return;
+  const msg = document.getElementById('checkMsgPasscode');
+  const pick = classOptions[Number(document.getElementById('classPc').value)];
+  const session = document.getElementById('sessionPc').value;
+  const term = document.getElementById('termPc').value;
+  const passcode = document.getElementById('passcodeInput').value.replace(/\s+/g, '');
+  if (!pick || !session || !passcode){ msg.textContent = 'Please select the session, term and class, and type your passcode.'; msg.className = 'small text-center mt-2 text-danger'; return; }
+  msg.textContent = 'Checking...'; msg.className = 'small text-center mt-2 text-muted';
+  document.getElementById('checkBtnPasscode').disabled = true;
+  try {
+    const resp = await apiCall({ action:'publicCheckResultByPasscode', classFilter: pick.cls, arm: pick.arm, term, session, passcode });
+    document.getElementById('checkBtnPasscode').disabled = false;
+    handleResultResponse(resp, 'checkMsgPasscode');
+  } catch (err) {
+    document.getElementById('checkBtnPasscode').disabled = false;
+    msg.textContent = 'Could not reach the server. Check your connection.'; msg.className = 'small text-center mt-2 text-danger';
+  }
+});
+
+function handleResultResponse(resp, msgElId){
+  if (!resp.ok){
+    const msg = document.getElementById(msgElId);
+    msg.textContent = resp.error; msg.className = 'small text-center mt-2 text-danger';
+    return;
+  }
+  if (!resp.cleared){
+    document.getElementById('formCard').style.display = 'none';
+    document.getElementById('owingName').textContent = resp.studentName || '';
+    document.getElementById('owingReason').textContent = resp.reason || '';
+    if (resp.owing !== null && resp.owing !== undefined){
+      document.getElementById('owingAmountBox').style.display = 'block';
+      document.getElementById('owingAmount').textContent = '₦' + Number(resp.owing).toLocaleString();
+    } else {
+      document.getElementById('owingAmountBox').style.display = 'none';
+    }
+    document.getElementById('owingCard').style.display = 'block';
+    return;
+  }
+  renderResultSheet(resp);
+}
+
+/* ============================== RENDER via shared report-lib.js template ============================== */
+function renderResultSheet(resp){
+  lastResult = resp;
+  const isYearly = resp.reportType === 'yearly';
+  const average = resp.average || 0;
+  const comment = window.smsResults.overallComment(average);
+
+  let subjects, caCount;
+  if (isYearly) {
+    subjects = resp.subjects || [];
+    caCount = null;
+  } else {
+    const method = window.smsResults.normMethod(resp.gradingMethod);
+    subjects = (resp.scores || []).map(sc => window.smsResults.regrade({ name: sc.subject, ca: sc.ca || [], examScore: sc.exam, total: sc.total }, method));
+    caCount = subjects.length ? subjects[0].ca.length : 2;
+  }
+
+  const domains = window.smsResults.DOMAIN_LIST.map(name => ({ name, rating: (resp.domainRatings || {})[name] || '' }));
+
+  window.smsReport.renderSheet(document.getElementById('sheetContent'), {
+    school: resp, gradingMethod: window.smsResults.normMethod(resp.gradingMethod),
+    reportType: resp.reportType, section: resp.section,
+    student: { ...resp.student, noInClass: resp.noInClass },
+    term: resp.term, session: resp.session,
+    attendance: { ...resp.attendance, closingDate: resp.termMeta && resp.termMeta.closingDate, resumptionDate: resp.termMeta && resp.termMeta.resumptionDate },
+    caCount, subjects,
+    overallTotal: resp.overallTotal, average: resp.average, percentage: resp.percentage, position: resp.position,
+    domains,
+    bill: (resp.schoolBill && resp.schoolBill.items) || [], outstandingBill: resp.schoolBill && resp.schoolBill.outstanding, totalBill: resp.schoolBill && resp.schoolBill.total,
+    classTeacherRemark: comment, headTeacherRemark: comment,
+    classTeacherName: resp.classTeacherName,
+    principalName: resp.principalName, principalSignature: resp.principalSignature
+  });
+
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('owingCard').style.display = 'none';
+  document.getElementById('sheetWrap').style.display = 'block';
+}
+
+function resetToForm(){
+  document.getElementById('sheetWrap').style.display = 'none';
+  document.getElementById('owingCard').style.display = 'none';
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('passcodeInput').value = '';
+  document.getElementById('checkMsgPasscode').textContent = '';
+}
+document.getElementById('backBtn1').addEventListener('click', resetToForm);
+document.getElementById('backBtn2').addEventListener('click', resetToForm);
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+/* One-tap PDF: the exact A4 sheet shown on screen (logo, colours, photo and the principal's signature). */
+let lastResult = null;
+document.getElementById('pdfBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('pdfBtn'), msg = document.getElementById('pdfMsg');
+  btn.disabled = true; msg.className = 'small text-center mt-1 text-muted'; msg.textContent = 'Preparing your PDF…';
+  const r = lastResult || {};
+  const name = `Result-${(r.student && r.student.fullName) || 'student'}-${r.term || ''}-${(r.session || '').replace('/', '-')}`;
+  const out = await window.smsPdf.downloadPaper(document.querySelector('#sheetContent .rs-paper'), name, { title: 'Result sheet - ' + ((r.student && r.student.fullName) || ''), author: r.schoolName || '', openFallback: true });
+  btn.disabled = false;
+  if (out.ok) { msg.className = 'small text-center mt-1 text-success'; msg.textContent = 'Your PDF has been saved.'; }
+  else { msg.className = 'small text-center mt-1 text-danger'; msg.textContent = 'Could not make the PDF here. Use Print and choose Save as PDF instead.'; }
+});
+</script>
+<script src="pdf-download.js"></script>
+<script src="results-lib.js"></script>
+<script src="print-lib.js"></script>
+<script src="report-lib.js"></script>
+<script src="portal-nav.js"></script>
+<script>renderPortalNav('result');</script>
+</body>
+</html>

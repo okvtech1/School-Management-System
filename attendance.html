@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="config.js"></script>
+<script src="demo-mode.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>OKV School Management System — Attendance</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  body{background:#FAF6EC;font-family:system-ui,sans-serif;padding:1.25rem;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+  h1{font-size:1.3rem;font-weight:700;color:#14213D;margin:0;}
+  .card-panel{background:#fff;border:1px solid #DCD0B4;border-radius:14px;padding:1.25rem;box-shadow:0 6px 24px rgba(20,33,61,.1);margin-bottom:1rem;}
+  table{font-size:.85rem;}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#7a7259;}
+  .btn-forest{background:#14213D;border-color:#14213D;color:#fff;}
+  .btn-forest:hover{background:#1D2F55;border-color:#1D2F55;color:#fff;}
+  #offlineBanner{display:none;position:fixed;top:0;left:0;right:0;background:#8B1E3F;color:#fff;text-align:center;padding:.5rem;font-weight:600;z-index:2000;}
+  .status-btns{display:flex;gap:.3rem;}
+  .status-btn{border:1px solid #DCD0B4;background:#fff;padding:.25em .8em;border-radius:20px;font-size:.75rem;font-weight:600;cursor:pointer;color:#5b5442;}
+  .status-btn.active-present{background:#DFF3E4;border-color:#2F6B4F;color:#1E6B3A;}
+  .status-btn.active-absent{background:#FBE4E4;border-color:#8B1E3F;color:#8B1E3F;}
+  .status-btn.active-late{background:#FCF3DA;border-color:#B8863B;color:#8A6A12;}
+  .summary-pill{font-size:.7rem;background:#F1E7D3;color:#93672B;border-radius:12px;padding:.15em .7em;font-weight:700;}
+  .no-perm-note{font-size:.82rem;color:#8A6A12;background:#FCF3DA;border-radius:10px;padding:.6rem .8rem;}
+</style>
+</head>
+<body>
+<div id="offlineBanner"><i class="bi bi-wifi-off"></i> Offline — attendance for this class/date needs a connection right now (it updates a shared running total, so it can't be queued offline like most other pages).</div>
+
+<div class="wrap">
+  <div class="topline">
+    <h1>Attendance</h1>
+    <a href="dashboard.html" target="_top" class="btn btn-sm btn-outline-secondary">← Dashboard</a> <button class="btn btn-sm btn-outline-secondary" onclick="smsLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+  </div>
+
+  <div class="card-panel">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label small">Class</label>
+        <select class="form-select form-select-sm" id="classSelect"></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Date</label>
+        <input type="date" class="form-control form-control-sm" id="dateInput">
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-sm btn-outline-secondary w-100" id="markAllPresentBtn">Mark All Present</button>
+      </div>
+    </div>
+    <div class="no-perm-note mt-2" id="noAssignmentsNote" style="display:none;">You don't have any class assigned to you as Form/Class Teacher yet — ask your Admin to assign one under Class &amp; Subject Assignment.</div>
+  </div>
+
+  <div class="card-panel" id="rosterPanel" style="display:none;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="small text-muted">Term: <b id="termLabel"></b></div>
+      <div><span class="summary-pill" id="presentCountPill">0 present</span> <span class="summary-pill" id="absentCountPill">0 absent</span> <span class="summary-pill" id="lateCountPill">0 late</span></div>
+    </div>
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Student</th><th>Admission No.</th><th>Status</th></tr></thead>
+      <tbody id="rosterBody"></tbody>
+    </table>
+    <button class="btn btn-forest" id="saveAttendanceBtn"><i class="bi bi-check2"></i> Save Attendance</button>
+    <div id="saveMsg" class="small mt-2"></div>
+  </div>
+</div>
+
+<script src="sync.js"></script>
+<script src="settings-lib.js"></script>
+<script>
+const session = JSON.parse(localStorage.getItem('sms_session') || 'null');
+if (!session){ window.top.location.href = 'login.html'; }
+const roles = session.roles || [];
+const ADMIN_TIER = ['Super Administrator','School Administrator','Principal / Head Teacher','Academic Officer / Exam Officer'];
+const canMark = roles.includes('Teacher') || roles.some(r => ADMIN_TIER.includes(r));
+if (!canMark){ window.top.location.href = 'dashboard.html'; }
+
+window.SMS_API_URL = window.SMS_CONFIG.apiUrl;
+function updateOnlineState(){ document.getElementById('offlineBanner').style.display = navigator.onLine ? 'none' : 'block'; }
+window.addEventListener('online', updateOnlineState); window.addEventListener('offline', updateOnlineState); updateOnlineState();
+
+async function apiCall(payload){
+  const res = await fetch(window.SMS_API_URL, {
+    method: 'POST', headers: {'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ ...payload, sessionToken: session.sessionToken })
+  });
+  return res.json();
+}
+
+let settingsState = null;
+let myClasses = [];   // [{class, arm}]
+let students = [];
+let currentStatuses = {}; // studentId -> 'present'|'absent'|'late'
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function todayStr(){ const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+async function loadAll(){
+  const { payload } = await window.smsSettings.getSettings();
+  settingsState = payload;
+  document.getElementById('dateInput').value = todayStr();
+
+  const isAdminTier = roles.some(r => ADMIN_TIER.includes(r));
+  if (isAdminTier) {
+    myClasses = [];
+    (settingsState.classes||[]).forEach(cls => {
+      const arms = (settingsState.classArms||{})[cls] || [''];
+      arms.forEach(arm => myClasses.push({ class: cls, arm }));
+    });
+  } else {
+    const classTeacherRecords = await window.smsSync.getRecords('classTeacher');
+    myClasses = classTeacherRecords.filter(r => r.payload.teacherUserId === session.userId)
+      .map(r => ({ class: r.payload.class, arm: r.payload.arm || '' }));
+  }
+
+  if (!myClasses.length) { document.getElementById('noAssignmentsNote').style.display = 'block'; return; }
+
+  const sel = document.getElementById('classSelect');
+  sel.innerHTML = myClasses.map((c,i) => `<option value="${i}">${c.class}${c.arm ? ' ' + c.arm : ''}</option>`).join('');
+  sel.addEventListener('change', loadRoster);
+  document.getElementById('dateInput').addEventListener('change', loadRoster);
+  await loadRoster();
+}
+
+async function loadRoster(){
+  const c = myClasses[Number(document.getElementById('classSelect').value)];
+  document.getElementById('termLabel').textContent = `${settingsState.currentTerm || ''} · ${settingsState.currentSession || ''}`;
+
+  const allStudents = await window.smsSync.getRecords('student');
+  students = allStudents.filter(s => s.payload.class === c.class && (s.payload.arm || '') === (c.arm || ''))
+    .sort((a,b) => (a.payload.fullName||'').localeCompare(b.payload.fullName||''));
+
+  // Pull any existing marking for this class+date so re-opening a day shows what was saved.
+  const date = document.getElementById('dateInput').value;
+  const resp = await apiCall({ action: 'getAttendanceForClass', classArm: `${c.class}|${c.arm||''}`, date });
+  const existing = (resp.ok && resp.record) ? resp.record.payload.statuses : {};
+  currentStatuses = {};
+  students.forEach(s => { currentStatuses[s.recordId] = existing[s.recordId] || 'present'; });
+
+  renderRoster();
+  document.getElementById('rosterPanel').style.display = 'block';
+}
+
+function renderRoster(){
+  document.getElementById('rosterBody').innerHTML = students.map(s => `
+    <tr>
+      <td>${escapeHtml(s.payload.fullName||'')}</td>
+      <td>${escapeHtml(s.payload.admissionNo||'')}</td>
+      <td>
+        <div class="status-btns" data-student="${s.recordId}">
+          <button type="button" class="status-btn status-present" data-status="present">Present</button>
+          <button type="button" class="status-btn status-absent" data-status="absent">Absent</button>
+          <button type="button" class="status-btn status-late" data-status="late">Late</button>
+        </div>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">No students in this class yet.</td></tr>';
+
+  document.querySelectorAll('.status-btns').forEach(group => {
+    const studentId = group.dataset.student;
+    group.querySelectorAll('.status-btn').forEach(btn => {
+      btn.addEventListener('click', () => { currentStatuses[studentId] = btn.dataset.status; renderRoster(); updateCounts(); });
+    });
+  });
+  students.forEach(s => {
+    const group = document.querySelector(`.status-btns[data-student="${s.recordId}"]`);
+    if (!group) return;
+    group.querySelectorAll('.status-btn').forEach(btn => {
+      btn.classList.toggle(`active-${btn.dataset.status}`, currentStatuses[s.recordId] === btn.dataset.status);
+    });
+  });
+  updateCounts();
+}
+
+function updateCounts(){
+  const vals = Object.values(currentStatuses);
+  document.getElementById('presentCountPill').textContent = `${vals.filter(v=>v==='present').length} present`;
+  document.getElementById('absentCountPill').textContent = `${vals.filter(v=>v==='absent').length} absent`;
+  document.getElementById('lateCountPill').textContent = `${vals.filter(v=>v==='late').length} late`;
+}
+
+document.getElementById('markAllPresentBtn').addEventListener('click', () => {
+  students.forEach(s => currentStatuses[s.recordId] = 'present');
+  renderRoster();
+});
+
+document.getElementById('saveAttendanceBtn').addEventListener('click', async () => {
+  const c = myClasses[Number(document.getElementById('classSelect').value)];
+  const date = document.getElementById('dateInput').value;
+  const msg = document.getElementById('saveMsg');
+  if (!navigator.onLine) { msg.textContent = 'You need to be online to save attendance.'; msg.className = 'small mt-2 text-danger'; return; }
+  msg.textContent = 'Saving…'; msg.className = 'small mt-2 text-muted';
+  const resp = await apiCall({
+    action: 'markAttendance', classArm: `${c.class}|${c.arm||''}`, date,
+    term: settingsState.currentTerm, session: settingsState.currentSession, statuses: currentStatuses
+  });
+  if (!resp.ok) { msg.textContent = resp.error; msg.className = 'small mt-2 text-danger'; return; }
+  msg.textContent = 'Attendance saved.'; msg.className = 'small mt-2 text-success';
+});
+
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+loadAll();
+</script>
+<script src="logout-lib.js"></script>
+<script src="pw-toggle.js"></script>
+</body>
+</html>
